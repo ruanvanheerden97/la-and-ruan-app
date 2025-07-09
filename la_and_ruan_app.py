@@ -5,7 +5,7 @@ import os
 # --- CONFIG ---
 NOTES_FILE = "la_notes.txt"
 BUCKET_FILE = "bucket_list.txt"
-MET_DATE = datetime(2025, 6, 29)  # Change this if needed
+MET_DATE = datetime(2025, 6, 23)  # Change this if needed
 
 # --- STYLING ---
 page_bg_img = """
