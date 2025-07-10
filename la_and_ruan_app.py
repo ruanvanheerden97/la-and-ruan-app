@@ -40,6 +40,30 @@ recent_notes = [n for n in notes if tz.localize(datetime.strptime(n["Timestamp"]
 recent_bucket = [item[0] for item in bucket_items if len(item) > 1 and item[1] and tz.localize(datetime.strptime(item[1], "%Y-%m-%d %H:%M:%S")) > last_24_hours]
 recent_calendar = [e for e in calendar_items if tz.localize(datetime.strptime(e["Created"], "%Y-%m-%d %H:%M:%S")) > last_24_hours]
 
+# --- UPCOMING EVENT COUNTDOWN ---
+def get_next_event():
+    upcoming = []
+    for e in calendar_items:
+        try:
+            event_time = tz.localize(datetime.strptime(e["Date"], "%Y-%m-%d"))
+            if event_time > now:
+                upcoming.append((event_time, e))
+        except:
+            continue
+    if upcoming:
+        return sorted(upcoming, key=lambda x: x[0])[0]
+    return None, None
+
+next_event_time, next_event = get_next_event()
+if next_event_time:
+    countdown = next_event_time - now
+    days_left = countdown.days
+    hours_left, remainder = divmod(countdown.seconds, 3600)
+    minutes_left, seconds_left = divmod(remainder, 60)
+    countdown_message = f"⏳ Countdown until we meet again: **{days_left}d {hours_left}h {minutes_left}m {seconds_left}s** 💫"
+else:
+    countdown_message = "📆 No upcoming events planned yet... Add one in the calendar!"
+
 # --- PAGE STYLING ---
 st.set_page_config(page_title="La & Ruan App", layout="centered")
 page_bg_img = """
@@ -96,6 +120,9 @@ if menu == "🏠 Home":
     if recent_calendar:
         event = recent_calendar[-1]
         st.markdown(f"**New Event:** {event['Date']} - {event['Title']}: {event['Details']}")
+
+    st.markdown("---")
+    st.markdown(f"### 💕 {countdown_message}")
 
 # --- NOTES PAGE ---
 elif menu == "💌 Notes":
