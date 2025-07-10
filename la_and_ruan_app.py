@@ -5,7 +5,7 @@ import os
 # --- CONFIG ---
 NOTES_FILE = "la_notes.txt"
 BUCKET_FILE = "bucket_list.txt"
-MET_DATE = datetime(2025, 6, 23)  # Change this if needed
+MET_DATE = datetime(2025, 6, 23)  # Update if needed
 
 # --- STYLING ---
 page_bg_img = """
@@ -46,35 +46,46 @@ image_path = "oaty_and_la.png"
 if os.path.exists(image_path):
     st.image(image_path, caption="🐾 La & Oaty", width=250)
 
-# --- NOTES ---
-st.subheader("💌 Daily Note to Each Other")
+# --- NOTES SECTION ---
+st.subheader("💌 Leave a New Note")
+
+with st.form("note_form"):
+    name = st.text_input("Your name (La or Ruan)")
+    message = st.text_area("Write your note here:")
+    submitted = st.form_submit_button("Send Note 💌")
+
+    if submitted and name and message:
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+        full_entry = f"{timestamp} - {name}:\n{message.strip()}\n---\n"
+        with open(NOTES_FILE, "a", encoding="utf-8") as f:
+            f.write(full_entry)
+        st.success("Note sent and saved! 💖")
+
+# --- DISPLAY ALL NOTES ---
+st.subheader("📝 Note History")
+
 if os.path.exists(NOTES_FILE):
     with open(NOTES_FILE, "r", encoding="utf-8") as f:
-        existing_note = f.read()
+        notes_content = f.read().strip()
+        st.markdown(f"<div style='white-space: pre-wrap; background-color: rgba(255,255,255,0.75); padding: 1em; border-radius: 10px;'>{notes_content}</div>", unsafe_allow_html=True)
 else:
-    existing_note = ""
+    st.info("No notes yet. Be the first to write one!")
 
-note = st.text_area("Leave a sweet note for La:", value=existing_note, height=150)
+# --- BUCKET LIST SECTION ---
+st.subheader("🌄 Our Bucket List")
 
-if st.button("Save Note"):
-    with open(NOTES_FILE, "w", encoding="utf-8") as f:
-        f.write(note)
-    st.success("Note saved! ❤️")
-
-# --- BUCKET LIST ---
-st.subheader("📝 Our Bucket List")
 if os.path.exists(BUCKET_FILE):
     with open(BUCKET_FILE, "r", encoding="utf-8") as f:
-        bucket_items = f.read().splitlines()
+        bucket_items = f.read().strip()
 else:
-    bucket_items = ["⛺ Glamping trip in the mountains – bring bikes & trail shoes"]
+    bucket_items = "⛺ Glamping trip in the mountains – bring bikes & trail shoes"
 
-edited_list = st.text_area("Add your dream plans here (one per line):", value="\n".join(bucket_items), height=150)
+bucket_list_input = st.text_area("Edit our bucket list (one per line):", value=bucket_items, height=150)
 
 if st.button("Update Bucket List"):
     with open(BUCKET_FILE, "w", encoding="utf-8") as f:
-        f.write(edited_list)
-    st.success("Bucket list updated! 🥾")
+        f.write(bucket_list_input.strip())
+    st.success("Bucket list updated! 🌻")
 
 # --- FOOTER ---
 st.markdown("---")
