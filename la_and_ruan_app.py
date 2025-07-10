@@ -36,9 +36,9 @@ calendar_items = calendar_ws.get_all_records()
 # --- RECENT CHANGES ---
 now = datetime.now(tz)
 last_24_hours = now - timedelta(hours=24)
-recent_notes = [n for n in notes if datetime.strptime(n["Timestamp"], "%Y-%m-%d %H:%M:%S") > last_24_hours]
-recent_bucket = [item[0] for item in bucket_items if len(item) > 1 and item[1] and datetime.strptime(item[1], "%Y-%m-%d %H:%M:%S") > last_24_hours]
-recent_calendar = [e for e in calendar_items if datetime.strptime(e["Created"], "%Y-%m-%d %H:%M:%S") > last_24_hours]
+recent_notes = [n for n in notes if tz.localize(datetime.strptime(n["Timestamp"], "%Y-%m-%d %H:%M:%S")) > last_24_hours]
+recent_bucket = [item[0] for item in bucket_items if len(item) > 1 and item[1] and tz.localize(datetime.strptime(item[1], "%Y-%m-%d %H:%M:%S")) > last_24_hours]
+recent_calendar = [e for e in calendar_items if tz.localize(datetime.strptime(e["Created"], "%Y-%m-%d %H:%M:%S")) > last_24_hours]
 
 # --- PAGE STYLING ---
 st.set_page_config(page_title="La & Ruan App", layout="centered")
