@@ -1,15 +1,21 @@
 import streamlit as st
-from datetime import datetime
+from datetime import datetime, time
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import os
 import json
+from pytz import timezone
+
+# --- TIMEZONE CONFIG ---
+tz = timezone("Africa/Harare")
+timestamp = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
 
 # --- CONFIG ---
 MET_DATE = datetime(2025, 6, 23)
 GOOGLE_SHEET_NAME = "La & Ruan App"
 NOTES_SHEET = "Notes"
 BUCKET_SHEET = "BucketList"
+CALENDAR_SHEET = "Calendar"
 
 # --- AUTHENTICATION ---
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
@@ -20,13 +26,14 @@ client = gspread.authorize(creds)
 # --- OPEN GOOGLE SHEET ---
 sheet = client.open(GOOGLE_SHEET_NAME)
 
-# --- LOAD EXISTING NOTES ---
+# --- LOAD EXISTING DATA ---
 notes_ws = sheet.worksheet(NOTES_SHEET)
-notes = notes_ws.get_all_records()
-
-# --- LOAD BUCKET LIST ---
 bucket_ws = sheet.worksheet(BUCKET_SHEET)
+calendar_ws = sheet.worksheet(CALENDAR_SHEET)
+
+notes = notes_ws.get_all_records()
 bucket_items = [row[0] for row in bucket_ws.get_all_values() if row]
+calendar_events = calendar_ws.get_all_records()
 
 # --- STYLING ---
 page_bg_img = """
@@ -79,8 +86,8 @@ message = st.text_area("Write a new note:")
 
 if st.button("Send Note 💌"):
     if name and message:
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        notes_ws.append_row([name, message, timestamp])
+        now = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
+        notes_ws.append_row([name, message, now])
         st.success("Note saved! ❤️")
     else:
         st.warning("Please fill in both name and message.")
@@ -100,3 +107,34 @@ if st.button("Add to Bucket List 🗺️"):
         st.success("Item added to bucket list! 🥾")
     else:
         st.warning("Please type something before adding.")
+
+# --- CALENDAR SECTION ---
+st.subheader("📅 Our Shared Calendar")
+
+with st.form("calendar_form"):
+    event_date = st.date_input("Event Date")
+    start_time = st.time_input("Start Time", time(8, 0))
+    end_time = st.time_input("End Time", time(17, 0))
+    title = st.text_input("Event Title")
+    location = st.text_input("Location")
+    description = st.text_area("Description / What to Pack")
+
+    submitted = st.form_submit_button("Add to Calendar 🗓️")
+    if submitted:
+        if title and location:
+            calendar_ws.append_row([
+                event_date.strftime("%Y-%m-%d"),
+                start_time.strftime("%H:%M"),
+                end_time.strftime("%H:%M"),
+                title,
+                location,
+                description
+            ])
+            st.success("Event added to calendar! 🎉")
+        else:
+            st.warning("Please enter at least a title and location.")
+
+# --- SHOW UPCOMING EVENTS ---
+st.write("#### Upcoming Events:")
+for event in calendar_events[-5:][::-1]:
+    st.markdown(f"📆 **{event['Date']}** — 🗓️ *{event['Event Title']}* at **{event['Location']}**\n\n🕒 {event['Start Time']} - {event['End Time']} \n\n🧳 _{event['Description']}_")
