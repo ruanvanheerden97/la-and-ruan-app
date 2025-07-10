@@ -112,7 +112,7 @@ if menu == "🏠 Home":
 
     image_path2 = "ruan.jpg"
     if os.path.exists(image_path2):
-        st.image(image_path2, caption="🐾  Ruan", width=220)
+        st.image(image_path2, caption="🚴🏼  Ruan", width=220)
 
     st.subheader("🕒 Recent Activity (Last 24 Hours)")
     if recent_notes:
