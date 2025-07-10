@@ -2,21 +2,22 @@ import streamlit as st
 from datetime import datetime
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-import json
+import os
 
 # --- CONFIG ---
 MET_DATE = datetime(2025, 6, 23)
 GOOGLE_SHEET_NAME = "La & Ruan App"
 NOTES_SHEET = "Notes"
 BUCKET_SHEET = "BucketList"
-CREDS_FILE = "creds.json"
 
 # --- AUTHENTICATION ---
-
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-creds_dict = json.loads(st.secrets["GOOGLE_SERVICE_ACCOUNT_JSON"])
+creds_dict = st.secrets["GOOGLE_SERVICE_ACCOUNT_JSON"]
 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 client = gspread.authorize(creds)
+
+# --- OPEN SHEET ---
+sheet = client.open(GOOGLE_SHEET_NAME)
 
 # --- LOAD EXISTING NOTES ---
 notes_ws = sheet.worksheet(NOTES_SHEET)
