@@ -3,6 +3,7 @@ from datetime import datetime
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import os
+import json
 
 # --- CONFIG ---
 MET_DATE = datetime(2025, 6, 23)
@@ -12,11 +13,11 @@ BUCKET_SHEET = "BucketList"
 
 # --- AUTHENTICATION ---
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-creds_dict = st.secrets["GOOGLE_SERVICE_ACCOUNT_JSON"]
+creds_dict = json.loads(st.secrets["GOOGLE_SERVICE_ACCOUNT_JSON"])
 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 client = gspread.authorize(creds)
 
-# --- OPEN SHEET ---
+# --- OPEN GOOGLE SHEET ---
 sheet = client.open(GOOGLE_SHEET_NAME)
 
 # --- LOAD EXISTING NOTES ---
