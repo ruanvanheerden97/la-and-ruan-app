@@ -1,17 +1,16 @@
 import streamlit as st
-from datetime import datetime, time
+from datetime import datetime, timedelta
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import os
 import json
 from pytz import timezone
 
-# --- TIMEZONE CONFIG ---
+# --- TIMEZONE SETUP ---
 tz = timezone("Africa/Harare")
-timestamp = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
 
 # --- CONFIG ---
-MET_DATE = datetime(2025, 6, 23)
+MET_DATE = datetime(2025, 6, 23, tzinfo=tz)
 GOOGLE_SHEET_NAME = "La & Ruan App"
 NOTES_SHEET = "Notes"
 BUCKET_SHEET = "BucketList"
@@ -25,17 +24,24 @@ client = gspread.authorize(creds)
 
 # --- OPEN GOOGLE SHEET ---
 sheet = client.open(GOOGLE_SHEET_NAME)
-
-# --- LOAD EXISTING DATA ---
 notes_ws = sheet.worksheet(NOTES_SHEET)
 bucket_ws = sheet.worksheet(BUCKET_SHEET)
 calendar_ws = sheet.worksheet(CALENDAR_SHEET)
 
+# --- LOAD DATA ---
 notes = notes_ws.get_all_records()
-bucket_items = [row[0] for row in bucket_ws.get_all_values() if row]
-calendar_events = calendar_ws.get_all_records()
+bucket_items = bucket_ws.get_all_values()
+calendar_items = calendar_ws.get_all_records()
 
-# --- STYLING ---
+# --- RECENT CHANGES ---
+now = datetime.now(tz)
+last_24_hours = now - timedelta(hours=24)
+recent_notes = [n for n in notes if datetime.strptime(n["Timestamp"], "%Y-%m-%d %H:%M:%S") > last_24_hours]
+recent_bucket = [item[0] for item in bucket_items if len(item) > 1 and item[1] and datetime.strptime(item[1], "%Y-%m-%d %H:%M:%S") > last_24_hours]
+recent_calendar = [e for e in calendar_items if datetime.strptime(e["Created"], "%Y-%m-%d %H:%M:%S") > last_24_hours]
+
+# --- PAGE STYLING ---
+st.set_page_config(page_title="La & Ruan App", layout="centered")
 page_bg_img = """
 <style>
 [data-testid="stAppViewContainer"] > .main {
@@ -62,79 +68,75 @@ textarea, input, .stButton>button {
 """
 st.markdown(page_bg_img, unsafe_allow_html=True)
 
-# --- HEADER ---
-st.markdown("<h1 style='text-align: center;'>🌻 La & Ruan 🌻</h1>", unsafe_allow_html=True)
+# --- SIDEBAR MENU ---
+menu = st.sidebar.radio("Navigate", ["Home", "Notes", "Bucket List", "Calendar"])
 
-# --- DAYS SINCE MET ---
-days = (datetime.now() - MET_DATE).days
-st.markdown(f"<h3 style='text-align: center;'>💛 We've been talking for <strong>{days} days</strong>.</h3>", unsafe_allow_html=True)
+# --- HOME PAGE ---
+if menu == "Home":
+    st.markdown("<h1 style='text-align: center;'>🌻 La & Ruan 🌻</h1>", unsafe_allow_html=True)
+    days = (now - MET_DATE).days
+    st.markdown(f"<h3 style='text-align: center;'>💛 We've been talking for <strong>{days} days</strong>.</h3>", unsafe_allow_html=True)
 
-# --- IMAGE ---
-image_path = "oaty_and_la.png"
-if os.path.exists(image_path):
-    st.image(image_path, caption="🐾 La & Oaty", width=250)
+    image_path = "oaty_and_la.png"
+    if os.path.exists(image_path):
+        st.image(image_path, caption="🐾 La & Oaty", width=250)
 
-# --- NOTES SECTION ---
-st.subheader("💌 Daily Note to Each Other")
+    st.subheader("🕒 Recent Activity (Last 24 Hours)")
+    if recent_notes:
+        st.markdown("**Latest Note:**")
+        note = recent_notes[-1]
+        st.markdown(f"📅 *{note['Timestamp']}* — **{note['Name']}**: {note['Message']}")
+    if recent_bucket:
+        st.markdown(f"**New Bucket List Item:** {recent_bucket[-1]}")
+    if recent_calendar:
+        event = recent_calendar[-1]
+        st.markdown(f"**New Event:** {event['Date']} - {event['Title']}: {event['Details']}")
 
-st.write("#### Existing Notes:")
-for note in reversed(notes):
-    st.markdown(f"📅 *{note['Timestamp']}* — **{note['Name']}**: {note['Message']}")
+# --- NOTES PAGE ---
+elif menu == "Notes":
+    st.header("💌 Daily Note to Each Other")
+    for note in reversed(notes):
+        st.markdown(f"📅 *{note['Timestamp']}* — **{note['Name']}**: {note['Message']}")
 
-name = st.text_input("Your name")
-message = st.text_area("Write a new note:")
-
-if st.button("Send Note 💌"):
-    if name and message:
-        now = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
-        notes_ws.append_row([name, message, now])
-        st.success("Note saved! ❤️")
-    else:
-        st.warning("Please fill in both name and message.")
-
-# --- BUCKET LIST ---
-st.subheader("📝 Our Bucket List")
-
-st.write("#### Current Bucket List:")
-for item in bucket_items:
-    st.markdown(f"✅ {item}")
-
-new_item = st.text_input("Add something new to our list:")
-
-if st.button("Add to Bucket List 🗺️"):
-    if new_item:
-        bucket_ws.append_row([new_item])
-        st.success("Item added to bucket list! 🥾")
-    else:
-        st.warning("Please type something before adding.")
-
-# --- CALENDAR SECTION ---
-st.subheader("📅 Our Shared Calendar")
-
-with st.form("calendar_form"):
-    event_date = st.date_input("Event Date")
-    start_time = st.time_input("Start Time", time(8, 0))
-    end_time = st.time_input("End Time", time(17, 0))
-    title = st.text_input("Event Title")
-    location = st.text_input("Location")
-    description = st.text_area("Description / What to Pack")
-
-    submitted = st.form_submit_button("Add to Calendar 🗓️")
-    if submitted:
-        if title and location:
-            calendar_ws.append_row([
-                event_date.strftime("%Y-%m-%d"),
-                start_time.strftime("%H:%M"),
-                end_time.strftime("%H:%M"),
-                title,
-                location,
-                description
-            ])
-            st.success("Event added to calendar! 🎉")
+    name = st.text_input("Your name")
+    message = st.text_area("Write a new note:")
+    if st.button("Send Note 💌"):
+        if name and message:
+            timestamp = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
+            notes_ws.append_row([name, message, timestamp])
+            st.success("Note saved! ❤️")
         else:
-            st.warning("Please enter at least a title and location.")
+            st.warning("Please fill in both name and message.")
 
-# --- SHOW UPCOMING EVENTS ---
-st.write("#### Upcoming Events:")
-for event in calendar_events[-5:][::-1]:
-    st.markdown(f"📆 **{event['Date']}** — 🗓️ *{event['Event Title']}* at **{event['Location']}**\n\n🕒 {event['Start Time']} - {event['End Time']} \n\n🧳 _{event['Description']}_")
+# --- BUCKET LIST PAGE ---
+elif menu == "Bucket List":
+    st.header("📝 Our Bucket List")
+    for item in bucket_items:
+        st.markdown(f"✅ {item[0]}")
+
+    new_item = st.text_input("Add something new to our list:")
+    if st.button("Add to Bucket List 🗺️"):
+        if new_item:
+            timestamp = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
+            bucket_ws.append_row([new_item, timestamp])
+            st.success("Item added to bucket list! 🥾")
+        else:
+            st.warning("Please type something before adding.")
+
+# --- CALENDAR PAGE ---
+elif menu == "Calendar":
+    st.header("📅 Our Shared Calendar")
+    for event in calendar_items:
+        st.markdown(f"📍 {event['Date']} — **{event['Title']}**  ")
+        st.markdown(f"{event['Details']}  ")
+        st.markdown(f"📝 *What to pack: {event['Packing']}*\n---")
+
+    st.subheader("Add New Event")
+    event_title = st.text_input("Event title")
+    event_date = st.date_input("Event date")
+    event_desc = st.text_area("Event details")
+    event_pack = st.text_input("What to pack")
+    if st.button("Add Event"):
+        created_time = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
+        calendar_ws.append_row([str(event_date), event_title, event_desc, event_pack, created_time])
+        st.success("Event added to calendar! 📌")
