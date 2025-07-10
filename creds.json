@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "laruanapp",
+  "private_key_id": "a25b51febb0861b266f93f01873b323da928cf58",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQD311z72ZT61LnS\nh7v7zjU9F8DvDP72KCcmsi+BTX1xoVmeVAm3j19LvYTnhwp2hjF7BzCNAfdWXXUt\naOTfv2DX9B7bPjWJW6u4LWWbbq5PWhKKeX4IXmCU8ag0hCG8kCvXI7UCxgZVR2Nv\nMQPJSQ48D1o8bZjYo1puYdiOPdPpYBH8SDANL5UvQe1X3c+4IIsY8l7+76ftbOek\naJxSCkYafoUyhTijwBhQHfK4jUBznnPbD9zXGw/6yV8v7mJJR4FhppMjXGvB0OzV\nbW0WMJr9qZ3R50rjAj0esa7plrSDpkXHMBPpDPJiCK6OnA0nZ+8oH6K64ZNJNlIO\nk592DKLdAgMBAAECggEABMa6vQPJcjgNSLhi8AxeTEob5r96XmYRsxY2AijrJPh2\nEK4P7eCudng1iny4v+YAKB3QWrdR+/EbI//kgUdf52mF+rWtNHN20LrXPXKZm1/i\nAZcrzZ97/wLVOgXd3JNutNu0TlRgpN4WVXs9VnC4/IFTPNzj2DD1ujDaios4fUPZ\n/2HndJYwUBwLkvrmkLEoge4zm2dhF0IJZGmfYRKx52dtLnUETLIuVHPiwbXdE1n7\nkXJM6GMqbznhe25tAyIdRnB0EaX0Z6fNqlFu3Nm134tpWQ8NaMOojZNbdyoQ8hsO\nXBV6FMYplhT1tWhJcCN9MzicRhda3EQaYjenHK0nIQKBgQD94Fm6SV+4MlNDAOuX\nd/x8es4B5sB5Gb1Oi9ohXac4Kub9DDzVKgfrnufSYsvSBuUt5znpP6Y2TV1tYhxO\nrcfFa82lPXhxNkgYNxxAneCE8Ot8HR5Pi+wyNWDW1p/J/IjYbwk+yhSiw1MTUHle\nFbGCprQYJ/O/JzJdchviSGUlxQKBgQD56hbUHrCrRJzXiOo0R35q0xqGhgvQcipM\nL0FL/eX/hlPqrnOcfXkh0jTeIvT1X71X57NsDdBM7gQ5skXtL3A/MUqJV5iRBYNK\n90doaMrFU6CPeE0+q8wyy1XnK5XN6dNZp6PcKhGTER6ksd+fx/KOAir8JFWd42Qa\nPzjWcrfyOQKBgBlhjJbrLv6jSV+xf9wsyrlHLcFS6Hsy75IiuTQMwOMEpwM1bf+B\nrDkKMfL+nZHpzo/ARjHjgyJ6qZR98oaLKSW7mVujwZ7P5nVFTTXIkuG3lFNcNeOO\nAZcjbwMLgf4XmTbKIwp7+YQsMuoDaZ7WXGDLecXQeLXrnUVqWw9MXZBhAoGBAIck\nBao42lIS7TlECVmx23OKqkpaTCMwyRyfZRDhwDC4A8LhCRVzaEBYukvw3UOevPW/\nDm/83EntX42PkG6c+3bAgczY+GBbec7c/tk/6X5hJW7Pn/2myuoguFgkYoKR0b8m\nft48RXqghFCM+x8c8VXHaFUmlMGnR+dFjsewCzZJAoGBAJLe0pN8+y4I5EzvUhy2\n6Rgn7edhyfOV8dlkjpwU5WHQnEEHxpaNvpNt2xwbdcQUDJY8eQW4myeOQ4DwwLnT\nMXR8FtB04w6X4UItIt+YpENRd4EyMKxfJgGFh/UGwonkM6uvSc47/S8xm1lcAPP7\ndkmQsEETzkaNTBNe1yjALyZg\n-----END PRIVATE KEY-----\n",
+  "client_email": "streamlit-sheets-writer@laruanapp.iam.gserviceaccount.com",
+  "client_id": "104191858534428991370",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/streamlit-sheets-writer%40laruanapp.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
