@@ -64,7 +64,6 @@ page_bg_img = """
     background-position: center;
     background-attachment: fixed;
     color: #333333;
-    padding-bottom: 50px;
 }
 [data-testid="stMarkdownContainer"] h1, h2, h3 {
     color: #222222;
@@ -76,35 +75,18 @@ textarea, input, .stButton>button, select {
     font-weight: 500;
     border-radius: 8px;
     width: 100%;
-    border: 1px solid #ccc;
-    padding: 0.5em;
 }
 .stButton>button {
     padding: 0.5em 1em;
     transition: all 0.3s ease-in-out;
-    background-color: #fff176 !important;
-    color: #000;
-    font-weight: bold;
 }
 .stButton>button:hover {
-    background-color: #ffd54f !important;
+    background-color: #ffea00 !important;
     color: #000;
 }
 .small-text {
     font-size: 0.9em;
     color: #333;
-}
-img {
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    margin-bottom: 10px;
-    max-width: 100%;
-    height: auto;
-}
-@media only screen and (max-width: 768px) {
-    .block-container {
-        padding: 1rem !important;
-    }
 }
 </style>
 """
@@ -119,15 +101,9 @@ if menu == "🏠 Home":
     days = (now - MET_DATE).days
     st.markdown(f"<h3 style='text-align: center;'>💛 We've been talking for <strong>{days} days</strong>.</h3>", unsafe_allow_html=True)
 
-    col1, col2 = st.columns(2)
-    with col1:
-        oaty_path = "oaty_and_la.png"
-        if os.path.exists(oaty_path):
-            st.image(oaty_path, caption="🐾 La & Oaty", use_container_width=True)
-    with col2:
-        ruan_path = "ruan.jpg"
-        if os.path.exists(ruan_path):
-            st.image(ruan_path, caption="🚴‍♂️ Ruan", use_container_width=True)
+    image_path = "oaty_and_la.png"
+    if os.path.exists(image_path):
+        st.image(image_path, caption="🐾 La & Oaty", width=220)
 
     st.subheader("🕒 Recent Activity (Last 24 Hours)")
     if recent_notes:
@@ -151,3 +127,82 @@ if menu == "🏠 Home":
         minutes, seconds = divmod(rem, 60)
         st.info(f"📅 Next event in {days_left} days: **{next_event['Title']}** — {next_event['Date']}")
         st.markdown(f"<p style='text-align:center; font-size: 0.9em;'>⏳ Countdown: {days_left}d {hours}h {minutes}m {seconds}s</p>", unsafe_allow_html=True)
+
+# --- NOTES PAGE ---
+elif menu == "💌 Notes":
+    st.header("💌 Daily Note to Each Other")
+    for note in reversed(notes):
+        st.markdown(f"📅 *{note['Timestamp']}* — **{note['Name']}**: {note['Message']}")
+
+    with st.form("note_form"):
+        name = st.text_input("Your name")
+        message = st.text_area("Write a new note:")
+        submitted = st.form_submit_button("Send Note 💌")
+        if submitted:
+            if name and message:
+                timestamp = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
+                notes_ws.append_row([name, message, timestamp])
+                st.success("Note saved! ❤️")
+            else:
+                st.warning("Please fill in both name and message.")
+
+# --- BUCKET LIST PAGE ---
+elif menu == "📝 Bucket List":
+    st.header("📝 Our Bucket List")
+    for item in bucket_items:
+        st.markdown(f"✅ {item[0]}")
+
+    with st.form("bucket_form"):
+        new_item = st.text_input("Add something new to our list:")
+        submitted = st.form_submit_button("Add to Bucket List 🗺️")
+        if submitted:
+            if new_item:
+                timestamp = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
+                bucket_ws.append_row([new_item, timestamp])
+                st.success("Item added to bucket list! 🥾")
+            else:
+                st.warning("Please type something before adding.")
+
+# --- CALENDAR PAGE ---
+elif menu == "📅 Calendar":
+    st.header("📅 Our Shared Calendar")
+    for event in calendar_items_sorted:
+        st.markdown(f"📍 {event['Date']} — **{event['Title']}**")
+        st.markdown(f"{event['Details']}")
+        st.markdown(f"<span class='small-text'>📝 What to pack: {event['Packing']}</span><hr>", unsafe_allow_html=True)
+
+    with st.form("calendar_form"):
+        event_title = st.text_input("Event title")
+        event_date = st.date_input("Event date")
+        event_desc = st.text_area("Event details")
+        event_pack = st.text_input("What to pack")
+        submitted = st.form_submit_button("Add Event")
+        if submitted:
+            created_time = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
+            calendar_ws.append_row([str(event_date), event_title, event_desc, event_pack, created_time])
+            st.success("Event added to calendar! 📌")
+
+# --- MOOD TRACKER PAGE ---
+elif menu == "📊 Mood Tracker":
+    st.header("📊 Daily Mood Check-In")
+    mood_options = ["😊 Happy", "😔 Sad", "😤 Frustrated", "❤️ In Love", "😴 Tired", "😎 Confident", "Custom"]
+    with st.form("mood_form"):
+        name = st.text_input("Your name")
+        mood = st.selectbox("How are you feeling today?", mood_options)
+        custom_mood = ""
+        if mood == "Custom":
+            custom_mood = st.text_input("Enter your custom mood")
+        note = st.text_area("Optional note")
+        submitted = st.form_submit_button("Submit Mood")
+        if submitted:
+            final_mood = custom_mood if mood == "Custom" and custom_mood else mood
+            if name and final_mood:
+                timestamp = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
+                mood_ws.append_row([name, final_mood, note, timestamp])
+                st.success("Mood logged! 🧠")
+            else:
+                st.warning("Please fill in your name and mood.")
+
+    st.subheader("💬 Past Mood Entries")
+    for entry in reversed(mood_entries):
+        st.markdown(f"📅 *{entry['Timestamp']}* — **{entry['Name']}** felt *{entry['Mood']}* — {entry['Note']}") 
