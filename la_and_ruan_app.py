@@ -8,6 +8,8 @@ from pytz import timezone
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 from google.oauth2 import service_account
+import mimetypes
+
 
 # --- TIMEZONE SETUP ---
 tz = timezone("Africa/Harare")
@@ -178,11 +180,16 @@ elif menu == "📸 Gallery":
             with open(filepath, "wb") as f:
                 f.write(uploaded_file.getbuffer())
 
-            media = MediaFileUpload(filepath, mimetype="image/jpeg")
+            mime_type, _ = mimetypes.guess_type(filepath)
+            timestamp = datetime.now(tz).strftime('%Y-%m-%d_%H-%M-%S')
+            safe_desc = image_desc.replace(":", "").replace("/", "").strip()
+            filename = f"{timestamp} - {safe_desc or uploaded_file.name}"
+
             file_metadata = {
-                "name": f"{datetime.now(tz).strftime('%Y-%m-%d_%H-%M-%S')} - {image_desc}",
+                "name": filename,
                 "parents": [GDRIVE_FOLDER_ID]
             }
+            media = MediaFileUpload(filepath, mimetype=mime_type)
             drive_service.files().create(body=file_metadata, media_body=media, fields="id").execute()
             st.success("Photo uploaded to gallery!")
 
