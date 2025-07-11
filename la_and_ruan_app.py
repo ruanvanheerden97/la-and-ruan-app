@@ -79,6 +79,10 @@ textarea, input, .stButton>button {
     background-color: #ffea00 !important;
     color: #000;
 }
+.small-text {
+    font-size: 0.9em;
+    color: #333;
+}
 </style>
 """
 st.markdown(page_bg_img, unsafe_allow_html=True)
@@ -108,9 +112,13 @@ if menu == "🏠 Home":
         st.markdown(f"**New Event:** {event['Date']} - {event['Title']}: {event['Details']}")
 
     if next_event:
-        event_date = datetime.strptime(next_event["Date"], "%Y-%m-%d").date()
-        days_until = (event_date - now.date()).days
-        st.info(f"📅 Next event in {days_until} days: **{next_event['Title']}** — {next_event['Date']}")
+        event_datetime = datetime.strptime(next_event["Date"], "%Y-%m-%d").replace(tzinfo=tz)
+        time_left = event_datetime - now
+        days_left = time_left.days
+        hours, rem = divmod(time_left.seconds, 3600)
+        minutes, seconds = divmod(rem, 60)
+        st.info(f"📅 Next event in {days_left} days: **{next_event['Title']}** — {next_event['Date']}")
+        st.markdown(f"<p style='text-align:center; font-size: 0.9em;'>⏳ Countdown: {days_left}d {hours}h {minutes}m {seconds}s</p>", unsafe_allow_html=True)
 
 # --- NOTES PAGE ---
 elif menu == "💌 Notes":
@@ -153,7 +161,7 @@ elif menu == "📅 Calendar":
     for event in calendar_items_sorted:
         st.markdown(f"📍 {event['Date']} — **{event['Title']}**")
         st.markdown(f"{event['Details']}")
-        st.markdown(f"📝 *What to pack: {event['Packing']}*\n---")
+        st.markdown(f"<span class='small-text'>📝 What to pack: {event['Packing']}</span><hr>", unsafe_allow_html=True)
 
     with st.form("calendar_form"):
         event_title = st.text_input("Event title")
