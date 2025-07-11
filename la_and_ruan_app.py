@@ -5,11 +5,6 @@ from oauth2client.service_account import ServiceAccountCredentials
 import os
 import json
 from pytz import timezone
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaFileUpload
-from google.oauth2 import service_account
-import mimetypes
-
 
 # --- TIMEZONE SETUP ---
 tz = timezone("Africa/Harare")
@@ -20,8 +15,6 @@ GOOGLE_SHEET_NAME = "La & Ruan App"
 NOTES_SHEET = "Notes"
 BUCKET_SHEET = "BucketList"
 CALENDAR_SHEET = "Calendar"
-GALLERY_FOLDER = "gallery"
-GDRIVE_FOLDER_ID = "1XEmkFAqDiZIVkPdwyEZul0id-esZ24iZ"  # Replace with your actual Google Drive folder ID
 
 # --- AUTHENTICATION ---
 scope = [
@@ -31,9 +24,6 @@ scope = [
 creds_dict = json.loads(st.secrets["GOOGLE_SERVICE_ACCOUNT_JSON"])
 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 client = gspread.authorize(creds)
-
-drive_creds = service_account.Credentials.from_service_account_info(creds_dict)
-drive_service = build("drive", "v3", credentials=drive_creds)
 
 # --- OPEN GOOGLE SHEET ---
 sheet = client.open(GOOGLE_SHEET_NAME)
@@ -87,7 +77,7 @@ textarea, input, .stButton>button {
 st.markdown(page_bg_img, unsafe_allow_html=True)
 
 # --- SIDEBAR MENU ---
-menu = st.sidebar.selectbox("📂 Menu", ["🏠 Home", "💌 Notes", "📝 Bucket List", "📅 Calendar", "📸 Gallery"])
+menu = st.sidebar.selectbox("📂 Menu", ["🏠 Home", "💌 Notes", "📝 Bucket List", "📅 Calendar"])
 
 # --- HOME PAGE ---
 if menu == "🏠 Home":
@@ -163,55 +153,3 @@ elif menu == "📅 Calendar":
             created_time = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
             calendar_ws.append_row([str(event_date), event_title, event_desc, event_pack, created_time])
             st.success("Event added to calendar! 📌")
-
-# --- GALLERY PAGE ---
-elif menu == "📸 Gallery":
-    st.header("📸 Memories Gallery")
-    st.write("Upload and view your favourite moments together 💛")
-
-    with st.form("upload_form"):
-        uploaded_file = st.file_uploader("Upload a photo", type=["jpg", "jpeg", "png"])
-        image_desc = st.text_input("Image description")
-        submitted = st.form_submit_button("📤 Upload Photo")
-
-    if submitted and uploaded_file is not None:
-        if not os.path.exists(GALLERY_FOLDER):
-            os.makedirs(GALLERY_FOLDER)
-        filepath = os.path.join(GALLERY_FOLDER, uploaded_file.name)
-        with open(filepath, "wb") as f:
-            f.write(uploaded_file.getbuffer())
-
-        mime_type, _ = mimetypes.guess_type(filepath)
-        if mime_type is None:
-            mime_type = "image/jpeg"
-
-        timestamp = datetime.now(tz).strftime('%Y-%m-%d_%H-%M-%S')
-        safe_desc = image_desc.replace(":", "").replace("/", "").strip()
-        filename = f"{timestamp} - {safe_desc or uploaded_file.name}"
-
-        file_metadata = {
-            "name": filename,
-            "parents": [GDRIVE_FOLDER_ID]
-        }
-
-        try:
-            media = MediaFileUpload(filepath, mimetype=mime_type)
-            drive_service.files().create(body=file_metadata, media_body=media, fields="id").execute()
-            st.success("Photo uploaded to gallery!")
-        except Exception as e:
-            st.error("❌ Upload failed. Please check folder permissions or API limits.")
-            st.exception(e)
-
-    results = drive_service.files().list(q=f"'{GDRIVE_FOLDER_ID}' in parents and mimeType contains 'image/'",
-                                         orderBy="createdTime desc",
-                                         pageSize=30, fields="files(id, name)").execute()
-    items = results.get("files", [])
-
-    cols = st.columns(3)
-    for i, file in enumerate(items):
-        file_url = f"https://drive.google.com/uc?export=view&id={file['id']}"
-        with cols[i % 3]:
-            st.image(file_url, caption=file['name'], use_column_width=True)
-            if st.button(f"🗑️ Delete", key=file['id']):
-                drive_service.files().delete(fileId=file['id']).execute()
-                st.warning("Image deleted. Please refresh to update gallery.")
