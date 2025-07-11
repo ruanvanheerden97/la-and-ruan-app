@@ -173,25 +173,34 @@ elif menu == "📸 Gallery":
         uploaded_file = st.file_uploader("Upload a photo", type=["jpg", "jpeg", "png"])
         image_desc = st.text_input("Image description")
         submitted = st.form_submit_button("📤 Upload Photo")
-        if submitted and uploaded_file is not None:
-            if not os.path.exists(GALLERY_FOLDER):
-                os.makedirs(GALLERY_FOLDER)
-            filepath = os.path.join(GALLERY_FOLDER, uploaded_file.name)
-            with open(filepath, "wb") as f:
-                f.write(uploaded_file.getbuffer())
 
-            mime_type, _ = mimetypes.guess_type(filepath)
-            timestamp = datetime.now(tz).strftime('%Y-%m-%d_%H-%M-%S')
-            safe_desc = image_desc.replace(":", "").replace("/", "").strip()
-            filename = f"{timestamp} - {safe_desc or uploaded_file.name}"
+    if submitted and uploaded_file is not None:
+        if not os.path.exists(GALLERY_FOLDER):
+            os.makedirs(GALLERY_FOLDER)
+        filepath = os.path.join(GALLERY_FOLDER, uploaded_file.name)
+        with open(filepath, "wb") as f:
+            f.write(uploaded_file.getbuffer())
 
-            file_metadata = {
-                "name": filename,
-                "parents": [GDRIVE_FOLDER_ID]
-            }
+        mime_type, _ = mimetypes.guess_type(filepath)
+        if mime_type is None:
+            mime_type = "image/jpeg"
+
+        timestamp = datetime.now(tz).strftime('%Y-%m-%d_%H-%M-%S')
+        safe_desc = image_desc.replace(":", "").replace("/", "").strip()
+        filename = f"{timestamp} - {safe_desc or uploaded_file.name}"
+
+        file_metadata = {
+            "name": filename,
+            "parents": [GDRIVE_FOLDER_ID]
+        }
+
+        try:
             media = MediaFileUpload(filepath, mimetype=mime_type)
             drive_service.files().create(body=file_metadata, media_body=media, fields="id").execute()
             st.success("Photo uploaded to gallery!")
+        except Exception as e:
+            st.error("❌ Upload failed. Please check folder permissions or API limits.")
+            st.exception(e)
 
     results = drive_service.files().list(q=f"'{GDRIVE_FOLDER_ID}' in parents and mimeType contains 'image/'",
                                          orderBy="createdTime desc",
