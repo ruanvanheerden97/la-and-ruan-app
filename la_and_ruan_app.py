@@ -36,6 +36,13 @@ notes = notes_ws.get_all_records()
 bucket_items = bucket_ws.get_all_values()
 calendar_items = calendar_ws.get_all_records()
 
+# --- SORT CALENDAR ITEMS ---
+calendar_items_sorted = sorted(calendar_items, key=lambda x: datetime.strptime(x["Date"], "%Y-%m-%d"))
+
+# --- NEXT EVENT COUNTDOWN ---
+upcoming_events = [e for e in calendar_items_sorted if datetime.strptime(e["Date"], "%Y-%m-%d") >= datetime.now(tz).date()]
+next_event = upcoming_events[0] if upcoming_events else None
+
 # --- RECENT CHANGES ---
 now = datetime.now(tz)
 last_24_hours = now - timedelta(hours=24)
@@ -100,6 +107,11 @@ if menu == "🏠 Home":
         event = recent_calendar[-1]
         st.markdown(f"**New Event:** {event['Date']} - {event['Title']}: {event['Details']}")
 
+    if next_event:
+        event_date = datetime.strptime(next_event["Date"], "%Y-%m-%d").date()
+        days_until = (event_date - now.date()).days
+        st.info(f"📅 Next event in {days_until} days: **{next_event['Title']}** — {next_event['Date']}")
+
 # --- NOTES PAGE ---
 elif menu == "💌 Notes":
     st.header("💌 Daily Note to Each Other")
@@ -138,7 +150,7 @@ elif menu == "📝 Bucket List":
 # --- CALENDAR PAGE ---
 elif menu == "📅 Calendar":
     st.header("📅 Our Shared Calendar")
-    for event in calendar_items:
+    for event in calendar_items_sorted:
         st.markdown(f"📍 {event['Date']} — **{event['Title']}**")
         st.markdown(f"{event['Details']}")
         st.markdown(f"📝 *What to pack: {event['Packing']}*\n---")
