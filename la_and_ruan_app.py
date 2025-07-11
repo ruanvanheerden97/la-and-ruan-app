@@ -15,6 +15,7 @@ GOOGLE_SHEET_NAME = "La & Ruan App"
 NOTES_SHEET = "Notes"
 BUCKET_SHEET = "BucketList"
 CALENDAR_SHEET = "Calendar"
+MOOD_SHEET = "MoodTracker"
 
 # --- AUTHENTICATION ---
 scope = [
@@ -30,11 +31,13 @@ sheet = client.open(GOOGLE_SHEET_NAME)
 notes_ws = sheet.worksheet(NOTES_SHEET)
 bucket_ws = sheet.worksheet(BUCKET_SHEET)
 calendar_ws = sheet.worksheet(CALENDAR_SHEET)
+mood_ws = sheet.worksheet(MOOD_SHEET)
 
 # --- LOAD DATA ---
 notes = notes_ws.get_all_records()
 bucket_items = bucket_ws.get_all_values()
 calendar_items = calendar_ws.get_all_records()
+mood_entries = mood_ws.get_all_records()
 
 # --- SORT CALENDAR ITEMS ---
 calendar_items_sorted = sorted(calendar_items, key=lambda x: datetime.strptime(x["Date"], "%Y-%m-%d"))
@@ -65,11 +68,12 @@ page_bg_img = """
     color: #222222;
     text-align: center;
 }
-textarea, input, .stButton>button {
+textarea, input, .stButton>button, select {
     background-color: rgba(255, 255, 255, 0.95) !important;
     color: #000000 !important;
     font-weight: 500;
     border-radius: 8px;
+    width: 100%;
 }
 .stButton>button {
     padding: 0.5em 1em;
@@ -88,7 +92,7 @@ textarea, input, .stButton>button {
 st.markdown(page_bg_img, unsafe_allow_html=True)
 
 # --- SIDEBAR MENU ---
-menu = st.sidebar.selectbox("📂 Menu", ["🏠 Home", "💌 Notes", "📝 Bucket List", "📅 Calendar"])
+menu = st.sidebar.selectbox("📂 Menu", ["🏠 Home", "💌 Notes", "📝 Bucket List", "📅 Calendar", "📊 Mood Tracker"])
 
 # --- HOME PAGE ---
 if menu == "🏠 Home":
@@ -173,3 +177,24 @@ elif menu == "📅 Calendar":
             created_time = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
             calendar_ws.append_row([str(event_date), event_title, event_desc, event_pack, created_time])
             st.success("Event added to calendar! 📌")
+
+# --- MOOD TRACKER PAGE ---
+elif menu == "📊 Mood Tracker":
+    st.header("📊 Daily Mood Check-In")
+    mood_options = ["😊 Happy", "😔 Sad", "😤 Frustrated", "❤️ In Love", "😴 Tired", "😎 Confident"]
+    with st.form("mood_form"):
+        name = st.text_input("Your name")
+        mood = st.selectbox("How are you feeling today?", mood_options)
+        note = st.text_area("Optional note")
+        submitted = st.form_submit_button("Submit Mood")
+        if submitted:
+            if name and mood:
+                timestamp = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
+                mood_ws.append_row([name, mood, note, timestamp])
+                st.success("Mood logged! 🧠")
+            else:
+                st.warning("Please fill in your name and mood.")
+
+    st.subheader("💬 Past Mood Entries")
+    for entry in reversed(mood_entries):
+        st.markdown(f"📅 *{entry['Timestamp']}* — **{entry['Name']}** felt *{entry['Mood']}* — {entry['Note']}")
