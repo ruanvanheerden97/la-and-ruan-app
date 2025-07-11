@@ -101,9 +101,15 @@ if menu == "🏠 Home":
     days = (now - MET_DATE).days
     st.markdown(f"<h3 style='text-align: center;'>💛 We've been talking for <strong>{days} days</strong>.</h3>", unsafe_allow_html=True)
 
-    image_path = "oaty_and_la.png"
-    if os.path.exists(image_path):
-        st.image(image_path, caption="🐾 La & Oaty", width=220)
+    col1, col2 = st.columns(2)
+    with col1:
+        oaty_path = "oaty_and_la.png"
+        if os.path.exists(oaty_path):
+            st.image(oaty_path, caption="🐾 La & Oaty", width=250)
+    with col2:
+        ruan_path = "ruan.jpg"
+        if os.path.exists(ruan_path):
+            st.image(ruan_path, caption="🚴‍♂️ Ruan", width=250)
 
     st.subheader("🕒 Recent Activity (Last 24 Hours)")
     if recent_notes:
