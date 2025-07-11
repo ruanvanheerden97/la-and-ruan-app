@@ -5,6 +5,9 @@ from oauth2client.service_account import ServiceAccountCredentials
 import os
 import json
 from pytz import timezone
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload
+from google.oauth2 import service_account
 
 # --- TIMEZONE SETUP ---
 tz = timezone("Africa/Harare")
@@ -15,12 +18,20 @@ GOOGLE_SHEET_NAME = "La & Ruan App"
 NOTES_SHEET = "Notes"
 BUCKET_SHEET = "BucketList"
 CALENDAR_SHEET = "Calendar"
+GALLERY_FOLDER = "gallery"
+GDRIVE_FOLDER_ID = "1XEmkFAqDiZIVkPdwyEZul0id-esZ24iZ"  # Replace with your actual Google Drive folder ID
 
 # --- AUTHENTICATION ---
-scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+scope = [
+    "https://spreadsheets.google.com/feeds",
+    "https://www.googleapis.com/auth/drive"
+]
 creds_dict = json.loads(st.secrets["GOOGLE_SERVICE_ACCOUNT_JSON"])
 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 client = gspread.authorize(creds)
+
+drive_creds = service_account.Credentials.from_service_account_info(creds_dict)
+drive_service = build("drive", "v3", credentials=drive_creds)
 
 # --- OPEN GOOGLE SHEET ---
 sheet = client.open(GOOGLE_SHEET_NAME)
@@ -39,30 +50,6 @@ last_24_hours = now - timedelta(hours=24)
 recent_notes = [n for n in notes if tz.localize(datetime.strptime(n["Timestamp"], "%Y-%m-%d %H:%M:%S")) > last_24_hours]
 recent_bucket = [item[0] for item in bucket_items if len(item) > 1 and item[1] and tz.localize(datetime.strptime(item[1], "%Y-%m-%d %H:%M:%S")) > last_24_hours]
 recent_calendar = [e for e in calendar_items if tz.localize(datetime.strptime(e["Created"], "%Y-%m-%d %H:%M:%S")) > last_24_hours]
-
-# --- UPCOMING EVENT COUNTDOWN ---
-def get_next_event():
-    upcoming = []
-    for e in calendar_items:
-        try:
-            event_time = tz.localize(datetime.strptime(e["Date"], "%Y-%m-%d"))
-            if event_time > now:
-                upcoming.append((event_time, e))
-        except:
-            continue
-    if upcoming:
-        return sorted(upcoming, key=lambda x: x[0])[0]
-    return None, None
-
-next_event_time, next_event = get_next_event()
-if next_event_time:
-    countdown = next_event_time - now
-    days_left = countdown.days
-    hours_left, remainder = divmod(countdown.seconds, 3600)
-    minutes_left, seconds_left = divmod(remainder, 60)
-    countdown_message = f"⏳ Countdown until we meet again: **{days_left}d {hours_left}h {minutes_left}m {seconds_left}s** 💫"
-else:
-    countdown_message = "📆 No upcoming events planned yet... Add one in the calendar!"
 
 # --- PAGE STYLING ---
 st.set_page_config(page_title="La & Ruan App", layout="centered")
@@ -98,7 +85,7 @@ textarea, input, .stButton>button {
 st.markdown(page_bg_img, unsafe_allow_html=True)
 
 # --- SIDEBAR MENU ---
-menu = st.sidebar.selectbox("📂 Menu", ["🏠 Home", "💌 Notes", "📝 Bucket List", "📅 Calendar"])
+menu = st.sidebar.selectbox("📂 Menu", ["🏠 Home", "💌 Notes", "📝 Bucket List", "📅 Calendar", "📸 Gallery"])
 
 # --- HOME PAGE ---
 if menu == "🏠 Home":
@@ -110,10 +97,6 @@ if menu == "🏠 Home":
     if os.path.exists(image_path):
         st.image(image_path, caption="🐾 La & Oaty", width=220)
 
-    image_path2 = "ruan.jpg"
-    if os.path.exists(image_path2):
-        st.image(image_path2, caption="🚴🏼  Ruan", width=220)
-
     st.subheader("🕒 Recent Activity (Last 24 Hours)")
     if recent_notes:
         st.markdown("**Latest Note:**")
@@ -124,9 +107,6 @@ if menu == "🏠 Home":
     if recent_calendar:
         event = recent_calendar[-1]
         st.markdown(f"**New Event:** {event['Date']} - {event['Title']}: {event['Details']}")
-
-    st.markdown("---")
-    st.markdown(f"### 💕 {countdown_message}")
 
 # --- NOTES PAGE ---
 elif menu == "💌 Notes":
@@ -181,3 +161,40 @@ elif menu == "📅 Calendar":
             created_time = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
             calendar_ws.append_row([str(event_date), event_title, event_desc, event_pack, created_time])
             st.success("Event added to calendar! 📌")
+
+# --- GALLERY PAGE ---
+elif menu == "📸 Gallery":
+    st.header("📸 Memories Gallery")
+    st.write("Upload and view your favourite moments together 💛")
+
+    uploaded_file = st.file_uploader("Upload a photo", type=["jpg", "jpeg", "png"])
+    image_desc = st.text_input("Image description")
+
+    if uploaded_file is not None:
+        if not os.path.exists(GALLERY_FOLDER):
+            os.makedirs(GALLERY_FOLDER)
+        filepath = os.path.join(GALLERY_FOLDER, uploaded_file.name)
+        with open(filepath, "wb") as f:
+            f.write(uploaded_file.getbuffer())
+
+        media = MediaFileUpload(filepath, mimetype="image/jpeg")
+        file_metadata = {
+            "name": f"{datetime.now(tz).strftime('%Y-%m-%d_%H-%M-%S')} - {image_desc}",
+            "parents": [GDRIVE_FOLDER_ID]
+        }
+        drive_service.files().create(body=file_metadata, media_body=media, fields="id").execute()
+        st.success("Photo uploaded to gallery!")
+
+    results = drive_service.files().list(q=f"'{GDRIVE_FOLDER_ID}' in parents and mimeType contains 'image/'",
+                                         orderBy="createdTime desc",
+                                         pageSize=30, fields="files(id, name)").execute()
+    items = results.get("files", [])
+
+    cols = st.columns(3)
+    for i, file in enumerate(items):
+        file_url = f"https://drive.google.com/uc?export=view&id={file['id']}"
+        with cols[i % 3]:
+            st.image(file_url, caption=file['name'], use_column_width=True)
+            if st.button(f"🗑️ Delete", key=file['id']):
+                drive_service.files().delete(fileId=file['id']).execute()
+                st.warning("Image deleted. Please refresh to update gallery.")
