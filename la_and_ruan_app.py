@@ -52,6 +52,7 @@ last_24_hours = now - timedelta(hours=24)
 recent_notes = [n for n in notes if tz.localize(datetime.strptime(n["Timestamp"], "%Y-%m-%d %H:%M:%S")) > last_24_hours]
 recent_bucket = [item[0] for item in bucket_items if len(item) > 1 and item[1] and tz.localize(datetime.strptime(item[1], "%Y-%m-%d %H:%M:%S")) > last_24_hours]
 recent_calendar = [e for e in calendar_items if tz.localize(datetime.strptime(e["Created"], "%Y-%m-%d %H:%M:%S")) > last_24_hours]
+recent_mood = [m for m in mood_entries if tz.localize(datetime.strptime(m["Timestamp"], "%Y-%m-%d %H:%M:%S")) > last_24_hours]
 
 # --- PAGE STYLING ---
 st.set_page_config(page_title="La & Ruan App", layout="centered")
@@ -114,6 +115,9 @@ if menu == "🏠 Home":
     if recent_calendar:
         event = recent_calendar[-1]
         st.markdown(f"**New Event:** {event['Date']} - {event['Title']}: {event['Details']}")
+    if recent_mood:
+        mood = recent_mood[-1]
+        st.markdown(f"**Mood Update:** {mood['Name']} felt {mood['Mood']} — {mood['Note']}")
 
     if next_event:
         event_datetime = datetime.strptime(next_event["Date"], "%Y-%m-%d").replace(tzinfo=tz)
@@ -181,16 +185,20 @@ elif menu == "📅 Calendar":
 # --- MOOD TRACKER PAGE ---
 elif menu == "📊 Mood Tracker":
     st.header("📊 Daily Mood Check-In")
-    mood_options = ["😊 Happy", "😔 Sad", "😤 Frustrated", "❤️ In Love", "😴 Tired", "😎 Confident"]
+    mood_options = ["😊 Happy", "😔 Sad", "😤 Frustrated", "❤️ In Love", "😴 Tired", "😎 Confident", "Custom"]
     with st.form("mood_form"):
         name = st.text_input("Your name")
         mood = st.selectbox("How are you feeling today?", mood_options)
+        custom_mood = ""
+        if mood == "Custom":
+            custom_mood = st.text_input("Enter your custom mood")
         note = st.text_area("Optional note")
         submitted = st.form_submit_button("Submit Mood")
         if submitted:
-            if name and mood:
+            final_mood = custom_mood if mood == "Custom" and custom_mood else mood
+            if name and final_mood:
                 timestamp = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
-                mood_ws.append_row([name, mood, note, timestamp])
+                mood_ws.append_row([name, final_mood, note, timestamp])
                 st.success("Mood logged! 🧠")
             else:
                 st.warning("Please fill in your name and mood.")
