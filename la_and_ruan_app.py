@@ -167,23 +167,24 @@ elif menu == "📸 Gallery":
     st.header("📸 Memories Gallery")
     st.write("Upload and view your favourite moments together 💛")
 
-    uploaded_file = st.file_uploader("Upload a photo", type=["jpg", "jpeg", "png"])
-    image_desc = st.text_input("Image description")
+    with st.form("upload_form"):
+        uploaded_file = st.file_uploader("Upload a photo", type=["jpg", "jpeg", "png"])
+        image_desc = st.text_input("Image description")
+        submitted = st.form_submit_button("📤 Upload Photo")
+        if submitted and uploaded_file is not None:
+            if not os.path.exists(GALLERY_FOLDER):
+                os.makedirs(GALLERY_FOLDER)
+            filepath = os.path.join(GALLERY_FOLDER, uploaded_file.name)
+            with open(filepath, "wb") as f:
+                f.write(uploaded_file.getbuffer())
 
-    if uploaded_file is not None:
-        if not os.path.exists(GALLERY_FOLDER):
-            os.makedirs(GALLERY_FOLDER)
-        filepath = os.path.join(GALLERY_FOLDER, uploaded_file.name)
-        with open(filepath, "wb") as f:
-            f.write(uploaded_file.getbuffer())
-
-        media = MediaFileUpload(filepath, mimetype="image/jpeg")
-        file_metadata = {
-            "name": f"{datetime.now(tz).strftime('%Y-%m-%d_%H-%M-%S')} - {image_desc}",
-            "parents": [GDRIVE_FOLDER_ID]
-        }
-        drive_service.files().create(body=file_metadata, media_body=media, fields="id").execute()
-        st.success("Photo uploaded to gallery!")
+            media = MediaFileUpload(filepath, mimetype="image/jpeg")
+            file_metadata = {
+                "name": f"{datetime.now(tz).strftime('%Y-%m-%d_%H-%M-%S')} - {image_desc}",
+                "parents": [GDRIVE_FOLDER_ID]
+            }
+            drive_service.files().create(body=file_metadata, media_body=media, fields="id").execute()
+            st.success("Photo uploaded to gallery!")
 
     results = drive_service.files().list(q=f"'{GDRIVE_FOLDER_ID}' in parents and mimeType contains 'image/'",
                                          orderBy="createdTime desc",
