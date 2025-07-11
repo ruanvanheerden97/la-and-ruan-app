@@ -123,11 +123,11 @@ if menu == "🏠 Home":
     with col1:
         oaty_path = "oaty_and_la.png"
         if os.path.exists(oaty_path):
-            st.image(oaty_path, caption="🐾 La & Oaty", use_column_width=True)
+            st.image(oaty_path, caption="🐾 La & Oaty", use_container_width=True)
     with col2:
         ruan_path = "ruan.jpg"
         if os.path.exists(ruan_path):
-            st.image(ruan_path, caption="🚴‍♂️ Ruan", use_column_width=True)
+            st.image(ruan_path, caption="🚴‍♂️ Ruan", use_container_width=True)
 
     st.subheader("🕒 Recent Activity (Last 24 Hours)")
     if recent_notes:
