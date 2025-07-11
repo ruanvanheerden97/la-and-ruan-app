@@ -40,11 +40,11 @@ calendar_items = calendar_ws.get_all_records()
 calendar_items_sorted = sorted(calendar_items, key=lambda x: datetime.strptime(x["Date"], "%Y-%m-%d"))
 
 # --- NEXT EVENT COUNTDOWN ---
-upcoming_events = [e for e in calendar_items_sorted if datetime.strptime(e["Date"], "%Y-%m-%d") >= datetime.now(tz).date()]
+now = datetime.now(tz)
+upcoming_events = [e for e in calendar_items_sorted if datetime.strptime(e["Date"], "%Y-%m-%d").date() >= now.date()]
 next_event = upcoming_events[0] if upcoming_events else None
 
 # --- RECENT CHANGES ---
-now = datetime.now(tz)
 last_24_hours = now - timedelta(hours=24)
 recent_notes = [n for n in notes if tz.localize(datetime.strptime(n["Timestamp"], "%Y-%m-%d %H:%M:%S")) > last_24_hours]
 recent_bucket = [item[0] for item in bucket_items if len(item) > 1 and item[1] and tz.localize(datetime.strptime(item[1], "%Y-%m-%d %H:%M:%S")) > last_24_hours]
