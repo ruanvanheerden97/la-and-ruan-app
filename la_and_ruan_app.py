@@ -40,12 +40,16 @@ bucket_items = bucket_ws.get_all_values()
 calendar_items = calendar_ws.get_all_records()
 mood_entries = mood_ws.get_all_records()
 
-# --- LOGIN SELECTION ---
+# --- LOGIN POPUP ---
 if "current_user" not in st.session_state:
-    st.session_state["current_user"] = ""
-if not st.session_state["current_user"]:
-    st.session_state["current_user"] = st.radio("Who's using the app?", ["La", "Ruan"])
-current_user = st.session_state["current_user"]
+    with st.modal("Who's using the app?"):
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("La"): st.session_state.current_user = "La"
+        with col2:
+            if st.button("Ruan"): st.session_state.current_user = "Ruan"
+        st.stop()
+current_user = st.session_state.current_user
 
 # --- FILTER CALENDAR EVENTS ---
 calendar_items_sorted = sorted(calendar_items, key=lambda x: datetime.strptime(x["Date"], "%Y-%m-%d"))
@@ -105,6 +109,46 @@ st.markdown(page_bg_img, unsafe_allow_html=True)
 
 # --- SIDEBAR MENU ---
 menu = st.sidebar.selectbox("📂 Menu", ["🏠 Home", "💌 Notes", "📝 Bucket List", "📅 Calendar", "📊 Mood Tracker"])
+
+# --- HOME PAGE ---
+if menu == "🏠 Home":
+    st.markdown(f"<h1 style='text-align: center;'>🌻 La & Ruan 🌻</h1>", unsafe_allow_html=True)
+    st.success(f"Welcome back, {current_user}! 🥰")
+    days = (now - MET_DATE).days
+    st.markdown(f"<h3 style='text-align: center;'>💛 We've been talking for <strong>{days} days</strong>.</h3>", unsafe_allow_html=True)
+
+    col1, col2 = st.columns(2)
+    with col1:
+        oaty_path = "oaty_and_la.png"
+        if os.path.exists(oaty_path):
+            st.image(oaty_path, caption="🐾 La & Oaty", use_container_width=True)
+    with col2:
+        ruan_path = "ruan.jpg"
+        if os.path.exists(ruan_path):
+            st.image(ruan_path, caption="🚴‍♂️ Ruan", use_container_width=True)
+
+    st.subheader("🕒 Recent Activity (Last 24 Hours)")
+    if recent_notes:
+        st.markdown("**New Note(s):**")
+        for n in recent_notes:
+            st.markdown(f"📅 *{n['Timestamp']}* — **{n['Name']}**: {n['Message']}")
+    if recent_bucket:
+        st.markdown(f"**New Bucket List Item:** {recent_bucket[-1]}")
+    if recent_calendar:
+        event = recent_calendar[-1]
+        st.markdown(f"**New Event:** {event['Date']} - {event['Title']}: {event['Details']}")
+    if recent_mood:
+        mood = recent_mood[-1]
+        st.markdown(f"**Mood Update:** {mood['Name']} felt {mood['Mood']} — {mood['Note']}")
+
+    if next_event:
+        event_datetime = datetime.strptime(next_event["Date"], "%Y-%m-%d").replace(tzinfo=tz)
+        time_left = event_datetime - now
+        days_left = time_left.days
+        hours, rem = divmod(time_left.seconds, 3600)
+        minutes, seconds = divmod(rem, 60)
+        st.info(f"📅 Next event in {days_left} days: **{next_event['Title']}** — {next_event['Date']}")
+        st.markdown(f"<p style='text-align:center; font-size: 0.9em;'>⏳ Countdown: {days_left}d {hours}h {minutes}m {seconds}s</p>", unsafe_allow_html=True)
 
 # --- NOTES PAGE ---
 if menu == "💌 Notes":
@@ -213,41 +257,3 @@ elif menu == "📊 Mood Tracker":
     for entry in reversed(mood_entries):
         st.markdown(f"📅 *{entry['Timestamp']}* — **{entry['Name']}** felt *{entry['Mood']}* — {entry['Note']}")
 
-# --- HOME PAGE ---
-elif menu == "🏠 Home":
-    st.markdown("<h1 style='text-align: center;'>🌻 La & Ruan 🌻</h1>", unsafe_allow_html=True)
-    days = (now - MET_DATE).days
-    st.markdown(f"<h3 style='text-align: center;'>💛 We've been talking for <strong>{days} days</strong>.</h3>", unsafe_allow_html=True)
-
-    col1, col2 = st.columns(2)
-    with col1:
-        oaty_path = "oaty_and_la.png"
-        if os.path.exists(oaty_path):
-            st.image(oaty_path, caption="🐾 La & Oaty", use_container_width=True)
-    with col2:
-        ruan_path = "ruan.jpg"
-        if os.path.exists(ruan_path):
-            st.image(ruan_path, caption="🚴‍♂️ Ruan", use_container_width=True)
-
-    st.subheader("🕒 Recent Activity (Last 24 Hours)")
-    if recent_notes:
-        st.markdown("**Latest Note:**")
-        note = recent_notes[-1]
-        st.markdown(f"📅 *{note['Timestamp']}* — **{note['Name']}**: {note['Message']}")
-    if recent_bucket:
-        st.markdown(f"**New Bucket List Item:** {recent_bucket[-1]}")
-    if recent_calendar:
-        event = recent_calendar[-1]
-        st.markdown(f"**New Event:** {event['Date']} - {event['Title']}: {event['Details']}")
-    if recent_mood:
-        mood = recent_mood[-1]
-        st.markdown(f"**Mood Update:** {mood['Name']} felt {mood['Mood']} — {mood['Note']}")
-
-    if next_event:
-        event_datetime = datetime.strptime(next_event["Date"], "%Y-%m-%d").replace(tzinfo=tz)
-        time_left = event_datetime - now
-        days_left = time_left.days
-        hours, rem = divmod(time_left.seconds, 3600)
-        minutes, seconds = divmod(rem, 60)
-        st.info(f"📅 Next event in {days_left} days: **{next_event['Title']}** — {next_event['Date']}")
-        st.markdown(f"<p style='text-align:center; font-size: 0.9em;'>⏳ Countdown: {days_left}d {hours}h {minutes}m {seconds}s</p>", unsafe_allow_html=True)
