@@ -41,15 +41,16 @@ calendar_items = calendar_ws.get_all_records()
 mood_entries = mood_ws.get_all_records()
 
 # --- LOGIN SELECTION ---
-st.session_state["current_user"] = st.session_state.get("current_user", "")
+if "current_user" not in st.session_state:
+    st.session_state["current_user"] = ""
 if not st.session_state["current_user"]:
     st.session_state["current_user"] = st.radio("Who's using the app?", ["La", "Ruan"])
 current_user = st.session_state["current_user"]
 
 # --- FILTER CALENDAR EVENTS ---
 calendar_items_sorted = sorted(calendar_items, key=lambda x: datetime.strptime(x["Date"], "%Y-%m-%d"))
-upcoming_events = [e for e in calendar_items_sorted if not e.get("Completed") and datetime.strptime(e["Date"], "%Y-%m-%d").date() >= datetime.now(tz).date()]
-past_events = [e for e in calendar_items_sorted if e.get("Completed")]
+upcoming_events = [e for e in calendar_items_sorted if str(e.get("Completed")).strip().upper() != "TRUE" and datetime.strptime(e["Date"], "%Y-%m-%d").date() >= datetime.now(tz).date()]
+past_events = [e for e in calendar_items_sorted if str(e.get("Completed")).strip().upper() == "TRUE"]
 next_event = upcoming_events[0] if upcoming_events else None
 
 # --- RECENT CHANGES ---
@@ -57,7 +58,7 @@ now = datetime.now(tz)
 last_24_hours = now - timedelta(hours=24)
 recent_notes = [n for n in notes if tz.localize(datetime.strptime(n["Timestamp"], "%Y-%m-%d %H:%M:%S")) > last_24_hours]
 recent_bucket = [item[0] for item in bucket_items if len(item) > 1 and item[1] and tz.localize(datetime.strptime(item[1], "%Y-%m-%d %H:%M:%S")) > last_24_hours]
-recent_calendar = [e for e in calendar_items if tz.localize(datetime.strptime(e["Created"], "%Y-%m-%d %H:%M:%S")) > last_24_hours and not e.get("Completed")]
+recent_calendar = [e for e in calendar_items if tz.localize(datetime.strptime(e["Created"], "%Y-%m-%d %H:%M:%S")) > last_24_hours and str(e.get("Completed")).strip().upper() != "TRUE"]
 recent_mood = [m for m in mood_entries if tz.localize(datetime.strptime(m["Timestamp"], "%Y-%m-%d %H:%M:%S")) > last_24_hours]
 
 # --- PAGE STYLING ---
@@ -116,16 +117,18 @@ if menu == "💌 Notes":
                 timestamp = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
                 notes_ws.append_row([current_user, message, timestamp, ""])
                 st.success("Note saved! ❤️")
+                st.rerun()
             else:
                 st.warning("Please write something before submitting.")
 
-    # Group notes by month
+    # Group notes by month and sort by timestamp descending
+    notes_sorted = sorted(notes, key=lambda x: x["Timestamp"], reverse=True)
     grouped_notes = {}
-    for note in notes:
+    for note in notes_sorted:
         month = datetime.strptime(note["Timestamp"], "%Y-%m-%d %H:%M:%S").strftime("%B %Y")
         grouped_notes.setdefault(month, []).append(note)
 
-    for month in sorted(grouped_notes.keys(), reverse=True):
+    for month in grouped_notes:
         st.subheader(f"🗓️ {month}")
         for i, note in enumerate(grouped_notes[month]):
             heart = "❤️" if note.get("LikedBy") and note["LikedBy"] != current_user else ""
