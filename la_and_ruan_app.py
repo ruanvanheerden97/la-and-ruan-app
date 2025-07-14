@@ -45,25 +45,29 @@ if "current_user" not in st.session_state:
     with st.modal("Who's using the app?"):
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("La"): st.session_state.current_user = "La"
+            if st.button("La"):
+                st.session_state.current_user = "La"
+                st.session_state.last_login_time = datetime.now(tz)
         with col2:
-            if st.button("Ruan"): st.session_state.current_user = "Ruan"
+            if st.button("Ruan"):
+                st.session_state.current_user = "Ruan"
+                st.session_state.last_login_time = datetime.now(tz)
         st.stop()
+
 current_user = st.session_state.current_user
+last_login_time = st.session_state.get("last_login_time", datetime.now(tz) - timedelta(days=1))
 
 # --- FILTER CALENDAR EVENTS ---
 calendar_items_sorted = sorted(calendar_items, key=lambda x: datetime.strptime(x["Date"], "%Y-%m-%d"))
-upcoming_events = [e for e in calendar_items_sorted if str(e.get("Completed")).strip().upper() != "TRUE" and datetime.strptime(e["Date"], "%Y-%m-%d").date() >= datetime.now(tz).date()]
-past_events = [e for e in calendar_items_sorted if str(e.get("Completed")).strip().upper() == "TRUE"]
+upcoming_events = [e for e in calendar_items_sorted if str(e.get("Completed", "")).strip().upper() != "TRUE" and datetime.strptime(e["Date"], "%Y-%m-%d").date() >= datetime.now(tz).date()]
+past_events = [e for e in calendar_items_sorted if str(e.get("Completed", "")).strip().upper() == "TRUE"]
 next_event = upcoming_events[0] if upcoming_events else None
 
 # --- RECENT CHANGES ---
-now = datetime.now(tz)
-last_24_hours = now - timedelta(hours=24)
-recent_notes = [n for n in notes if tz.localize(datetime.strptime(n["Timestamp"], "%Y-%m-%d %H:%M:%S")) > last_24_hours]
-recent_bucket = [item[0] for item in bucket_items if len(item) > 1 and item[1] and tz.localize(datetime.strptime(item[1], "%Y-%m-%d %H:%M:%S")) > last_24_hours]
-recent_calendar = [e for e in calendar_items if tz.localize(datetime.strptime(e["Created"], "%Y-%m-%d %H:%M:%S")) > last_24_hours and str(e.get("Completed")).strip().upper() != "TRUE"]
-recent_mood = [m for m in mood_entries if tz.localize(datetime.strptime(m["Timestamp"], "%Y-%m-%d %H:%M:%S")) > last_24_hours]
+recent_notes = [n for n in notes if tz.localize(datetime.strptime(n["Timestamp"], "%Y-%m-%d %H:%M:%S")) > last_login_time]
+recent_bucket = [item[0] for item in bucket_items if len(item) > 1 and item[1] and tz.localize(datetime.strptime(item[1], "%Y-%m-%d %H:%M:%S")) > last_login_time]
+recent_calendar = [e for e in calendar_items if tz.localize(datetime.strptime(e["Created"], "%Y-%m-%d %H:%M:%S")) > last_login_time and str(e.get("Completed", "")).strip().upper() != "TRUE"]
+recent_mood = [m for m in mood_entries if tz.localize(datetime.strptime(m["Timestamp"], "%Y-%m-%d %H:%M:%S")) > last_login_time]
 
 # --- PAGE STYLING ---
 st.set_page_config(page_title="La & Ruan App", layout="centered", initial_sidebar_state="collapsed")
@@ -114,7 +118,7 @@ menu = st.sidebar.selectbox("📂 Menu", ["🏠 Home", "💌 Notes", "📝 Bucke
 if menu == "🏠 Home":
     st.markdown(f"<h1 style='text-align: center;'>🌻 La & Ruan 🌻</h1>", unsafe_allow_html=True)
     st.success(f"Welcome back, {current_user}! 🥰")
-    days = (now - MET_DATE).days
+    days = (datetime.now(tz) - MET_DATE).days
     st.markdown(f"<h3 style='text-align: center;'>💛 We've been talking for <strong>{days} days</strong>.</h3>", unsafe_allow_html=True)
 
     col1, col2 = st.columns(2)
@@ -127,28 +131,29 @@ if menu == "🏠 Home":
         if os.path.exists(ruan_path):
             st.image(ruan_path, caption="🚴‍♂️ Ruan", use_container_width=True)
 
-    st.subheader("🕒 Recent Activity (Last 24 Hours)")
+    st.subheader("🔔 New Since Your Last Visit")
     if recent_notes:
-        st.markdown("**New Note(s):**")
+        st.markdown("**📝 New Note(s):**")
         for n in recent_notes:
             st.markdown(f"📅 *{n['Timestamp']}* — **{n['Name']}**: {n['Message']}")
     if recent_bucket:
-        st.markdown(f"**New Bucket List Item:** {recent_bucket[-1]}")
+        st.markdown(f"**🗺️ New Bucket List Item:** {recent_bucket[-1]}")
     if recent_calendar:
         event = recent_calendar[-1]
-        st.markdown(f"**New Event:** {event['Date']} - {event['Title']}: {event['Details']}")
+        st.markdown(f"**📅 New Event:** {event['Date']} - {event['Title']}: {event['Details']}")
     if recent_mood:
         mood = recent_mood[-1]
-        st.markdown(f"**Mood Update:** {mood['Name']} felt {mood['Mood']} — {mood['Note']}")
+        st.markdown(f"**🧠 Mood Update:** {mood['Name']} felt {mood['Mood']} — {mood['Note']}")
 
     if next_event:
         event_datetime = datetime.strptime(next_event["Date"], "%Y-%m-%d").replace(tzinfo=tz)
-        time_left = event_datetime - now
+        time_left = event_datetime - datetime.now(tz)
         days_left = time_left.days
         hours, rem = divmod(time_left.seconds, 3600)
         minutes, seconds = divmod(rem, 60)
         st.info(f"📅 Next event in {days_left} days: **{next_event['Title']}** — {next_event['Date']}")
         st.markdown(f"<p style='text-align:center; font-size: 0.9em;'>⏳ Countdown: {days_left}d {hours}h {minutes}m {seconds}s</p>", unsafe_allow_html=True)
+
 
 # --- NOTES PAGE ---
 if menu == "💌 Notes":
@@ -256,4 +261,3 @@ elif menu == "📊 Mood Tracker":
     st.subheader("💬 Past Mood Entries")
     for entry in reversed(mood_entries):
         st.markdown(f"📅 *{entry['Timestamp']}* — **{entry['Name']}** felt *{entry['Mood']}* — {entry['Note']}")
-
