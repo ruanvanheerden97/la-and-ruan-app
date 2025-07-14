@@ -39,19 +39,17 @@ bucket_items = bucket_ws.get_all_values()
 calendar_items = calendar_ws.get_all_records()
 mood_entries = mood_ws.get_all_records()
 
-# --- SORT CALENDAR ITEMS ---
+# --- FILTER CALENDAR EVENTS ---
 calendar_items_sorted = sorted(calendar_items, key=lambda x: datetime.strptime(x["Date"], "%Y-%m-%d"))
-
-# --- NEXT EVENT COUNTDOWN ---
-now = datetime.now(tz)
-upcoming_events = [e for e in calendar_items_sorted if datetime.strptime(e["Date"], "%Y-%m-%d").date() >= now.date()]
+upcoming_events = [e for e in calendar_items_sorted if not e.get("Completed") and datetime.strptime(e["Date"], "%Y-%m-%d").date() >= datetime.now(tz).date()]
 next_event = upcoming_events[0] if upcoming_events else None
 
 # --- RECENT CHANGES ---
+now = datetime.now(tz)
 last_24_hours = now - timedelta(hours=24)
 recent_notes = [n for n in notes if tz.localize(datetime.strptime(n["Timestamp"], "%Y-%m-%d %H:%M:%S")) > last_24_hours]
 recent_bucket = [item[0] for item in bucket_items if len(item) > 1 and item[1] and tz.localize(datetime.strptime(item[1], "%Y-%m-%d %H:%M:%S")) > last_24_hours]
-recent_calendar = [e for e in calendar_items if tz.localize(datetime.strptime(e["Created"], "%Y-%m-%d %H:%M:%S")) > last_24_hours]
+recent_calendar = [e for e in calendar_items if tz.localize(datetime.strptime(e["Created"], "%Y-%m-%d %H:%M:%S")) > last_24_hours and not e.get("Completed")]
 recent_mood = [m for m in mood_entries if tz.localize(datetime.strptime(m["Timestamp"], "%Y-%m-%d %H:%M:%S")) > last_24_hours]
 
 # --- PAGE STYLING ---
@@ -105,11 +103,11 @@ if menu == "🏠 Home":
     with col1:
         oaty_path = "oaty_and_la.png"
         if os.path.exists(oaty_path):
-            st.image(oaty_path, caption="🐾 La & Oaty", width=250)
+            st.image(oaty_path, caption="🐾 La & Oaty", use_column_width=True)
     with col2:
         ruan_path = "ruan.jpg"
         if os.path.exists(ruan_path):
-            st.image(ruan_path, caption="🚴‍♂️ Ruan", width=250)
+            st.image(ruan_path, caption="🚴‍♂️ Ruan", use_column_width=True)
 
     st.subheader("🕒 Recent Activity (Last 24 Hours)")
     if recent_notes:
@@ -137,9 +135,6 @@ if menu == "🏠 Home":
 # --- NOTES PAGE ---
 elif menu == "💌 Notes":
     st.header("💌 Daily Note to Each Other")
-    for note in reversed(notes):
-        st.markdown(f"📅 *{note['Timestamp']}* — **{note['Name']}**: {note['Message']}")
-
     with st.form("note_form"):
         name = st.text_input("Your name")
         message = st.text_area("Write a new note:")
@@ -151,6 +146,17 @@ elif menu == "💌 Notes":
                 st.success("Note saved! ❤️")
             else:
                 st.warning("Please fill in both name and message.")
+
+    # Group notes by month
+    grouped_notes = {}
+    for note in notes:
+        month = datetime.strptime(note["Timestamp"], "%Y-%m-%d %H:%M:%S").strftime("%B %Y")
+        grouped_notes.setdefault(month, []).append(note)
+
+    for month in sorted(grouped_notes.keys(), reverse=True):
+        st.subheader(f"🗓️ {month}")
+        for note in grouped_notes[month]:
+            st.markdown(f"📅 *{note['Timestamp']}* — **{note['Name']}**: {note['Message']}")
 
 # --- BUCKET LIST PAGE ---
 elif menu == "📝 Bucket List":
@@ -172,10 +178,18 @@ elif menu == "📝 Bucket List":
 # --- CALENDAR PAGE ---
 elif menu == "📅 Calendar":
     st.header("📅 Our Shared Calendar")
-    for event in calendar_items_sorted:
-        st.markdown(f"📍 {event['Date']} — **{event['Title']}**")
-        st.markdown(f"{event['Details']}")
-        st.markdown(f"<span class='small-text'>📝 What to pack: {event['Packing']}</span><hr>", unsafe_allow_html=True)
+    for i, event in enumerate(calendar_items_sorted):
+        if not event.get("Completed"):
+            st.markdown(f"📍 {event['Date']} — **{event['Title']}**")
+            st.markdown(f"{event['Details']}")
+            st.markdown(f"<span class='small-text'>📝 What to pack: {event['Packing']}</span>", unsafe_allow_html=True)
+            with st.form(f"complete_event_form_{i}"):
+                complete_note = st.text_area("Add notes after this event (optional)")
+                if st.form_submit_button("Mark as Done"):
+                    calendar_ws.update_cell(i+2, 6, "TRUE")  # Mark as done
+                    calendar_ws.update_cell(i+2, 7, complete_note)  # Store note
+                    st.success("Marked as completed.")
+            st.markdown("---")
 
     with st.form("calendar_form"):
         event_title = st.text_input("Event title")
@@ -185,7 +199,7 @@ elif menu == "📅 Calendar":
         submitted = st.form_submit_button("Add Event")
         if submitted:
             created_time = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
-            calendar_ws.append_row([str(event_date), event_title, event_desc, event_pack, created_time])
+            calendar_ws.append_row([str(event_date), event_title, event_desc, event_pack, created_time, "", ""])
             st.success("Event added to calendar! 📌")
 
 # --- MOOD TRACKER PAGE ---
@@ -211,4 +225,4 @@ elif menu == "📊 Mood Tracker":
 
     st.subheader("💬 Past Mood Entries")
     for entry in reversed(mood_entries):
-        st.markdown(f"📅 *{entry['Timestamp']}* — **{entry['Name']}** felt *{entry['Mood']}* — {entry['Note']}") 
+        st.markdown(f"📅 *{entry['Timestamp']}* — **{entry['Name']}** felt *{entry['Mood']}* — {entry['Note']}")
