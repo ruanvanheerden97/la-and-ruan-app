@@ -42,17 +42,23 @@ mood_entries = mood_ws.get_all_records()
 
 # --- LOGIN POPUP ---
 if "current_user" not in st.session_state:
-    with st.modal("Who's using the app?"):
+    login_placeholder = st.empty()
+    with login_placeholder.container():
+        st.markdown("## Who's using the app?")
         col1, col2 = st.columns(2)
         with col1:
             if st.button("La"):
                 st.session_state.current_user = "La"
                 st.session_state.last_login_time = datetime.now(tz)
+                login_placeholder.empty()
+                st.rerun()
         with col2:
             if st.button("Ruan"):
                 st.session_state.current_user = "Ruan"
                 st.session_state.last_login_time = datetime.now(tz)
-        st.stop()
+                login_placeholder.empty()
+                st.rerun()
+    st.stop()
 
 current_user = st.session_state.current_user
 last_login_time = st.session_state.get("last_login_time", datetime.now(tz) - timedelta(days=1))
