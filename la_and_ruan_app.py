@@ -52,6 +52,27 @@ def fetch_data():
 
 notes, bucket_items, calendar_items, mood_entries = fetch_data()
 
+# --- EVENT FILTER UTILITY ---
+def get_events(items):
+    sorted_items = sorted(items, key=lambda x: datetime.strptime(x.get("Date","1970-01-01"), "%Y-%m-%d"))
+    upcoming = [e for e in sorted_items if str(e.get("Completed","")).upper() != "TRUE"
+                and datetime.strptime(e.get("Date","1970-01-01"), "%Y-%m-%d").date() >= datetime.now(tz).date()]
+    past = [e for e in sorted_items if str(e.get("Completed","")).upper() == "TRUE"]
+    return upcoming, past
+
+upcoming_events, past_events = get_events(calendar_items)
+next_event = upcoming_events[0] if upcoming_events else None
+
+# --- RECENT CHANGES ---
+now = datetime.now(tz)
+last_login = st.session_state.get("last_login_time", now - timedelta(days=1))
+recent_notes = [n for n in notes if datetime.strptime(n.get("Timestamp",""), "%Y-%m-%d %H:%M:%S").replace(tzinfo=tz) > last_login]
+recent_bucket = [b[0] for b in bucket_items if len(b) > 1 and b[1]
+                 and datetime.strptime(b[1], "%Y-%m-%d %H:%M:%S").replace(tzinfo=tz) > last_login]
+recent_calendar = [e for e in calendar_items if datetime.strptime(e.get("Created","1970-01-01 00:00:00"), "%Y-%m-%d %H:%M:%S").replace(tzinfo=tz) > last_login
+                   and str(e.get("Completed","")).upper() != "TRUE"]
+recent_mood = [m for m in mood_entries if datetime.strptime(m.get("Timestamp",""), "%Y-%m-%d %H:%M:%S").replace(tzinfo=tz) > last_login]
+
 # --- LOGIN POPUP WITH PHOTOS ---
 if "current_user" not in st.session_state:
     placeholder = st.empty()
@@ -60,34 +81,33 @@ if "current_user" not in st.session_state:
         c1, c2 = st.columns(2)
         with c1:
             if os.path.exists("la.jpg"): st.image("la.jpg", caption="La 🌻", use_container_width=True)
-            if st.button("I'm La"): st.session_state.current_user = "La"; st.session_state.last_login_time = datetime.now(tz)
+            if st.button("I'm La"): st.session_state.current_user = "La"; st.session_state.last_login_time = now
         with c2:
             if os.path.exists("ruan.jpg"): st.image("ruan.jpg", caption="Ruan 🚴‍♂️", use_container_width=True)
-            if st.button("I'm Ruan"): st.session_state.current_user = "Ruan"; st.session_state.last_login_time = datetime.now(tz)
+            if st.button("I'm Ruan"): st.session_state.current_user = "Ruan"; st.session_state.last_login_time = now
     if "current_user" not in st.session_state:
         st.stop()
     placeholder.empty()
 
 current_user = st.session_state.current_user
-last_login_time = st.session_state.get("last_login_time", datetime.now(tz) - timedelta(days=1))
+st.set_page_config(page_title="La & Ruan App", layout="centered", initial_sidebar_state="collapsed")
 
 # --- SIDEBAR MENU ---
-st.set_page_config(page_title="La & Ruan App", layout="centered", initial_sidebar_state="collapsed")
-menu = st.sidebar.selectbox("📂 Menu", ["🏠 Home", "💌 Notes", "📝 Bucket List", "📅 Calendar", "📊 Mood Tracker"])
+menu = st.sidebar.selectbox(
+    "📂 Menu",
+    ["🏠 Home", "💌 Notes", "📝 Bucket List", "📅 Calendar", "📊 Mood Tracker"]
+)
 
-# --- HOME PAGE (REBRANDED) ---
+# --- HOME PAGE ---
 if menu == "🏠 Home":
     st.markdown("<h1 align='center' style='font-family:serif; color:#DEB887;'>La & Ruan 🌻</h1>", unsafe_allow_html=True)
     st.markdown("<h3 align='center' style='color:#444;'>Growing together, one day at a time</h3>", unsafe_allow_html=True)
-    days = (datetime.now(tz) - MET_DATE).days
+    days = (now - MET_DATE).days
     st.markdown(f"<div style='text-align:center; font-size:1.2em;'>💛 <strong>{days}</strong> days of sunflowers & smiles</div>", unsafe_allow_html=True)
     st.markdown("---")
     st.subheader("🔔 Updates since your last visit")
-    if recent_notes:
-        for n in recent_notes:
-            st.markdown(f"*{n['Timestamp']}* — **{n['Name']}**: {n['Message']}")
-    if recent_bucket:
-        st.markdown(f"🗺️ {recent_bucket[-1]}")
+    for n in recent_notes: st.markdown(f"*{n['Timestamp']}* — **{n['Name']}**: {n['Message']}")
+    if recent_bucket: st.markdown(f"🗺️ {recent_bucket[-1]}")
     if recent_calendar:
         ev = recent_calendar[-1]
         st.markdown(f"📅 {ev['Date']} — {ev['Title']}")
@@ -96,44 +116,36 @@ if menu == "🏠 Home":
         st.markdown(f"🧠 {m['Name']} felt {m['Mood']}")
     if next_event:
         dt = datetime.strptime(next_event['Date'], "%Y-%m-%d").replace(tzinfo=tz)
-        diff = dt - datetime.now(tz)
+        diff = dt - now
         d, rem = diff.days, diff.seconds
-        h = rem//3600; mi = (rem%3600)//60; s = rem%60
+        h, mi, s = rem//3600, (rem%3600)//60, rem%60
         st.info(f"Next: **{next_event['Title']}** in {d}d {h}h {mi}m {s}s")
 
 # --- NOTES PAGE ---
 elif menu == "💌 Notes":
     st.header("💌 Daily Notes")
-    # New note form
     with st.form("note_form"):
         msg = st.text_area("Share a note:")
         if st.form_submit_button("Send 💌") and msg:
-            notes_ws.append_row([current_user, msg, datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S"), ""])
+            notes_ws.append_row([current_user, msg, now.strftime("%Y-%m-%d %H:%M:%S"), ""])
             notes = fetch_data()[0]
             st.success("Sent! ❤️")
-    
-    # Display and inline-edit existing notes
     sorted_notes = sorted(notes, key=lambda x: x['Timestamp'], reverse=True)
     for n in sorted_notes:
         row_idx = notes.index(n) + 2
         heart = '❤️' if n.get('LikedBy') and n['LikedBy'] != current_user else ''
         c1, c2, c3 = st.columns([7, 1, 1])
-        with c1:
-            st.markdown(f"*{n['Timestamp']}* — **{n['Name']}**: {n['Message']} {heart}")
-        # Like button
+        c1.markdown(f"*{n['Timestamp']}* — **{n['Name']}**: {n['Message']} {heart}")
         if n['Name'] != current_user and not n.get('LikedBy'):
             if c2.button('❤️', key=f"like_{row_idx}"):
                 notes_ws.update_cell(row_idx, 4, current_user)
                 notes = fetch_data()[0]
-        # Edit button
         if c3.button('✏️', key=f"edit_{row_idx}"):
-            st.session_state['edit_row'] = row_idx
-            st.session_state['edit_text'] = n['Message']
-        # Inline edit form appears below this note only
+            st.session_state.edit_row = row_idx
+            st.session_state.edit_text = n['Message']
         if st.session_state.get('edit_row') == row_idx:
             new_msg = st.text_area("Edit note:", value=st.session_state.get('edit_text', n['Message']), key=f"edit_text_{row_idx}")
             if st.button('Save', key=f"save_{row_idx}"):
-                # Update the Message column (col 2)
                 notes_ws.update_cell(row_idx, 2, new_msg)
                 del st.session_state['edit_row'], st.session_state['edit_text']
                 notes = fetch_data()[0]
@@ -153,7 +165,7 @@ elif menu == "📝 Bucket List":
     with st.form('bucket_form'):
         ni = st.text_input('Add new item:')
         if st.form_submit_button('Add') and ni:
-            bucket_ws.append_row([ni, datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")])
+            bucket_ws.append_row([ni, now.strftime("%Y-%m-%d %H:%M:%S")])
             notes, bucket_items, calendar_items, mood_entries = fetch_data()
             st.success('Added!')
 
@@ -165,7 +177,7 @@ elif menu == "📅 Calendar":
     if 'del_c' in st.session_state:
         r = st.session_state.del_c
         st.warning('Delete this event?')
-        if st.button('Yes'): calendar_ws.delete_rows(r); notes, bucket_items, calendar_items, mood_entries = fetch_data(); upcoming_events,past_events = get_events(calendar_items); del st.session_state['del_c']; st.success('Deleted')
+        if st.button('Yes'): calendar_ws.delete_rows(r); notes, bucket_items, calendar_items, mood_entries = fetch_data(); upcoming_events, past_events = get_events(calendar_items); del st.session_state['del_c']; st.success('Deleted')
         if st.button('No'): del st.session_state['del_c']
     for idx, e in enumerate(events):
         ridx = calendar_items.index(e)+2
@@ -181,14 +193,14 @@ elif menu == "📅 Calendar":
         desc = st.text_area('Event details')
         p = st.text_input('What to pack')
         if st.form_submit_button('Add') and t:
-            calendar_ws.append_row([str(d),t,desc,p,datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S"),'',''])
+            calendar_ws.append_row([str(d),t,desc,p,now.strftime("%Y-%m-%d %H:%M:%S"),'',''])
             notes, bucket_items, calendar_items, mood_entries = fetch_data()
-            upcoming_events,past_events = get_events(calendar_items)
+            upcoming_events, past_events = get_events(calendar_items)
             st.success('Event added!')
 
 # --- MOOD TRACKER PAGE ---
 elif menu == "📊 Mood Tracker":
-    st.header("📊 Daily Mood Check-In")
+    st.header("📊 Mood Tracker")
     opts = ["😊 Happy","😔 Sad","😤 Frustrated","❤️ In Love","😴 Tired","😎 Confident","Custom"]
     with st.form('mood_form'):
         m = st.selectbox('How are you feeling today?', opts)
@@ -196,10 +208,8 @@ elif menu == "📊 Mood Tracker":
         if m=='Custom': custom = st.text_input('Enter custom mood')
         note = st.text_area('Optional note')
         if st.form_submit_button('Submit'):
-            mood_ws.append_row([current_user, custom if custom else m, note, datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")])
+            mood_ws.append_row([current_user, custom if custom else m, note, now.strftime("%Y-%m-%d %H:%M:%S")])
             notes, bucket_items, calendar_items, mood_entries = fetch_data()
             st.success('Mood logged!')
     st.subheader("💬 Past Mood Entries")
-    for m in reversed(mood_entries):
-        st.markdown(f"*{m['Timestamp']}* — **{m['Name']}** felt *{m['Mood']}* — {m['Note']}")
-
+    for m in reversed(mood_entries): st.markdown(f"*{m['Timestamp']}* — **{m['Name']}** felt *{m['Mood']}* — {m['Note']}")
