@@ -184,4 +184,68 @@ elif menu == "💌 Notes":
             if col2.button('❤️', key=n['Timestamp']):
                 notes_ws.update_cell(notes.index(n)+2, 4, current_user)
 
-# (Remaining pages unchanged)
+# --- BUCKET LIST PAGE ---
+elif menu == "📝 Bucket List":
+    st.header("📝 Our Bucket List")
+    if 'del_b' in st.session_state:
+        r = st.session_state.del_b
+        st.warning("Delete this item?")
+        if st.button('Yes'): bucket_ws.delete_rows(r); notes, bucket_items, calendar_items, mood_entries = fetch_data(); del st.session_state['del_b']; st.success('Deleted')
+        if st.button('No'): del st.session_state['del_b']
+    for i, b in enumerate(bucket_items):
+        c1, c2 = st.columns([9,1])
+        c1.markdown(f"✅ {b[0]}")
+        if c2.button('🗑️', key=f"del_b_{i}"): st.session_state['del_b'] = i+2
+    with st.form('bucket_form'):
+        ni = st.text_input('Add new item:')
+        if st.form_submit_button('Add') and ni:
+            bucket_ws.append_row([ni, datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")])
+            notes, bucket_items, calendar_items, mood_entries = fetch_data()
+            st.success('Added!')
+
+# --- CALENDAR PAGE ---
+elif menu == "📅 Calendar":
+    st.header("📅 Our Shared Calendar")
+    view = st.radio('View', ['Upcoming Events','Past Events'])
+    events = upcoming_events if view=='Upcoming Events' else past_events
+    if 'del_c' in st.session_state:
+        r = st.session_state.del_c
+        st.warning('Delete this event?')
+        if st.button('Yes'): calendar_ws.delete_rows(r); notes, bucket_items, calendar_items, mood_entries = fetch_data(); upcoming_events,past_events = get_events(calendar_items); del st.session_state['del_c']; st.success('Deleted')
+        if st.button('No'): del st.session_state['del_c']
+    for idx, e in enumerate(events):
+        ridx = calendar_items.index(e)+2
+        c1, c2 = st.columns([8,1])
+        c1.markdown(f"📍 {e['Date']} — **{e['Title']}**")
+        c1.markdown(e['Details'])
+        c1.markdown(f"<span class='small-text'>Pack: {e['Packing']}</span>", unsafe_allow_html=True)
+        if view=='Upcoming Events':
+            if c2.button('🗑️', key=f"del_c_{idx}"): st.session_state['del_c']=ridx
+    with st.form('calendar_form'):
+        t = st.text_input('Event title')
+        d = st.date_input('Event date')
+        desc = st.text_area('Event details')
+        p = st.text_input('What to pack')
+        if st.form_submit_button('Add') and t:
+            calendar_ws.append_row([str(d),t,desc,p,datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S"),'',''])
+            notes, bucket_items, calendar_items, mood_entries = fetch_data()
+            upcoming_events,past_events = get_events(calendar_items)
+            st.success('Event added!')
+
+# --- MOOD TRACKER PAGE ---
+elif menu == "📊 Mood Tracker":
+    st.header("📊 Daily Mood Check-In")
+    opts = ["😊 Happy","😔 Sad","😤 Frustrated","❤️ In Love","😴 Tired","😎 Confident","Custom"]
+    with st.form('mood_form'):
+        m = st.selectbox('How are you feeling today?', opts)
+        custom = ''
+        if m=='Custom': custom = st.text_input('Enter custom mood')
+        note = st.text_area('Optional note')
+        if st.form_submit_button('Submit'):
+            mood_ws.append_row([current_user, custom if custom else m, note, datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")])
+            notes, bucket_items, calendar_items, mood_entries = fetch_data()
+            st.success('Mood logged!')
+    st.subheader("💬 Past Mood Entries")
+    for m in reversed(mood_entries):
+        st.markdown(f"*{m['Timestamp']}* — **{m['Name']}** felt *{m['Mood']}* — {m['Note']}")
+
