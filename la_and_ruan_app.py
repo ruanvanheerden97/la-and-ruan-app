@@ -47,143 +47,316 @@ if "current_user" not in st.session_state:
         c1, c2 = st.columns(2)
         if c1.button("La"):
             st.session_state.current_user = "La"
-            st.session_state.last_login = datetime.now(tz)
+            st.session_state.last_login_time = datetime.now(tz)
             placeholder.empty()
+            st.experimental_rerun()
         if c2.button("Ruan"):
             st.session_state.current_user = "Ruan"
-            st.session_state.last_login = datetime.now(tz)
+            st.session_state.last_login_time = datetime.now(tz)
             placeholder.empty()
+            st.experimental_rerun()
     st.stop()
 
 current_user = st.session_state.current_user
-last_login = st.session_state.get("last_login", datetime.now(tz) - timedelta(days=1))
+last_login_time = st.session_state.get("last_login_time", datetime.now(tz) - timedelta(days=1))
 
-# --- CALENDAR FILTERS ---
-calendar_sorted = sorted(calendar_items, key=lambda x: datetime.strptime(x["Date"], "%Y-%m-%d"))
-upcoming = [e for e in calendar_sorted if str(e.get("Completed", "")).upper() != "TRUE" and datetime.strptime(e["Date"], "%Y-%m-%d").date() >= datetime.now(tz).date()]
-past = [e for e in calendar_sorted if str(e.get("Completed", "")).upper() == "TRUE"]
-next_event = upcoming[0] if upcoming else None
+# --- FILTER CALENDAR EVENTS ---
+calendar_items_sorted = sorted(
+    calendar_items,
+    key=lambda x: datetime.strptime(x["Date"], "%Y-%m-%d")
+)
+upcoming_events = [
+    e for e in calendar_items_sorted
+    if str(e.get("Completed", "")).strip().upper() != "TRUE"
+    and datetime.strptime(e["Date"], "%Y-%m-%d").date() >= datetime.now(tz).date()
+]
+past_events = [
+    e for e in calendar_items_sorted
+    if str(e.get("Completed", "")).strip().upper() == "TRUE"
+]
+next_event = upcoming_events[0] if upcoming_events else None
 
-# --- RECENT SINCE LAST LOGIN ---
-recent_notes = [n for n in notes if tz.localize(datetime.strptime(n["Timestamp"], "%Y-%m-%d %H:%M:%S")) > last_login]
-recent_bucket = [b[0] for b in bucket_items if len(b) > 1 and b[1] and tz.localize(datetime.strptime(b[1], "%Y-%m-%d %H:%M:%S")) > last_login]
-recent_events = [e for e in calendar_items if tz.localize(datetime.strptime(e.get("Created", "1970-01-01 00:00:00"), "%Y-%m-%d %H:%M:%S")) > last_login and str(e.get("Completed", "")).upper() != "TRUE"]
-recent_mood = [m for m in mood_entries if tz.localize(datetime.strptime(m["Timestamp"], "%Y-%m-%d %H:%M:%S")) > last_login]
+# --- RECENT CHANGES ---
+recent_notes = [
+    n for n in notes
+    if tz.localize(datetime.strptime(n["Timestamp"], "%Y-%m-%d %H:%M:%S")) > last_login_time
+]
+recent_bucket = [
+    item[0] for item in bucket_items
+    if len(item) > 1 and item[1]
+    and tz.localize(datetime.strptime(item[1], "%Y-%m-%d %H:%M:%S")) > last_login_time
+]
+recent_calendar = [
+    e for e in calendar_items
+    if tz.localize(datetime.strptime(e.get("Created", "1970-01-01 00:00:00"), "%Y-%m-%d %H:%M:%S")) > last_login_time
+    and str(e.get("Completed", "")).strip().upper() != "TRUE"
+]
+recent_mood = [
+    m for m in mood_entries
+    if tz.localize(datetime.strptime(m["Timestamp"], "%Y-%m-%d %H:%M:%S")) > last_login_time
+]
 
-# --- STYLING ---
-st.set_page_config(page_title="La & Ruan App", layout="centered", initial_sidebar_state="collapsed")
+# --- PAGE STYLING ---
+st.set_page_config(
+    page_title="La & Ruan App",
+    layout="centered",
+    initial_sidebar_state="collapsed"
+)
 st.markdown("""
 <style>
-[data-testid="stAppViewContainer"]>.main { background: rgba(255,255,255,0.8); }
-h1, h2, h3 { text-align: center; }
-textarea, input, button, select { border-radius: 8px; }
-button:hover { background: #ffea00; }
-.small-text { font-size: .9em; }
-.heart { color: red; }
+[data-testid="stAppViewContainer"] > .main {
+    background-image: url('https://images.unsplash.com/photo-1508973371-d5bd6f29c270?fit=crop&w=800&q=80');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    color: #333333;
+}
+[data-testid="stMarkdownContainer"] h1, h2, h3 {
+    color: #222222;
+    text-align: center;
+}
+textarea, input, .stButton>button, select {
+    background-color: rgba(255, 255, 255, 0.95) !important;
+    color: #000000 !important;
+    font-weight: 500;
+    border-radius: 8px;
+    width: 100%;
+}
+.stButton>button {
+    padding: 0.5em 1em;
+    transition: all 0.3s ease-in-out;
+}
+.stButton>button:hover {
+    background-color: #ffea00 !important;
+    color: #000;
+}
+.small-text {
+    font-size: 0.9em;
+    color: #333;
+}
+.heart {
+    color: red;
+    font-size: 1.2em;
+}
 </style>
 """, unsafe_allow_html=True)
 
-# --- NAVIGATION ---
-menu = st.sidebar.selectbox("Menu", ["🏠 Home", "💌 Notes", "📝 Bucket List", "📅 Calendar", "📊 Mood Tracker"])
+# --- SIDEBAR MENU ---
+menu = st.sidebar.selectbox(
+    "📂 Menu",
+    ["🏠 Home", "💌 Notes", "📝 Bucket List", "📅 Calendar", "📊 Mood Tracker"]
+)
 
-# --- HOME ---
+# --- HOME PAGE ---
 if menu == "🏠 Home":
-    st.title("🌻 La & Ruan 🌻")
-    st.success(f"Welcome back, {current_user}!")
+    st.markdown(
+        "<h1 style='text-align: center;'>🌻 La & Ruan 🌻</h1>",
+        unsafe_allow_html=True
+    )
+    st.success(f"Welcome back, {current_user}! 🥰")
     days = (datetime.now(tz) - MET_DATE).days
-    st.subheader(f"💛 We've been talking for {days} days")
+    st.markdown(
+        f"<h3 style='text-align: center;'>💛 We've been talking for <strong>{days} days</strong>.</h3>",
+        unsafe_allow_html=True
+    )
+
     col1, col2 = st.columns(2)
-    if os.path.exists("oaty_and_la.png"): col1.image("oaty_and_la.png", caption="🐾 La & Oaty", use_container_width=True)
-    if os.path.exists("ruan.jpg"):     col2.image("ruan.jpg",    caption="🚴‍♂️ Ruan",   use_container_width=True)
-    st.markdown("### 🔔 Since your last visit")
-    for n in recent_notes:
-        st.markdown(f"📅 {n['Timestamp']} — **{n['Name']}**: {n['Message']}")
+    with col1:
+        oaty_path = "oaty_and_la.png"
+        if os.path.exists(oaty_path):
+            st.image(
+                oaty_path,
+                caption="🐾 La & Oaty",
+                use_container_width=True
+            )
+    with col2:
+        ruan_path = "ruan.jpg"
+        if os.path.exists(ruan_path):
+            st.image(
+                ruan_path,
+                caption="🚴‍♂️ Ruan",
+                use_container_width=True
+            )
+
+    st.subheader("🔔 New Since Your Last Visit")
+    if recent_notes:
+        st.markdown("**📝 New Note(s):**")
+        for n in recent_notes:
+            st.markdown(f"📅 *{n['Timestamp']}* — **{n['Name']}**: {n['Message']}")
     if recent_bucket:
-        st.markdown(f"**🗺️ {recent_bucket[-1]}**")
-    for e in recent_events:
-        st.markdown(f"**📅 Upcoming: {e['Date']} — {e['Title']}**")
-    for m in recent_mood:
-        st.markdown(f"**🧠 Mood: {m['Name']} felt {m['Mood']}**")
+        st.markdown(f"**🗺️ New Bucket List Item:** {recent_bucket[-1]}")
+    if recent_calendar:
+        event = recent_calendar[-1]
+        st.markdown(
+            f"**📅 New Event:** {event['Date']} - {event['Title']}: {event['Details']}"
+        )
+    if recent_mood:
+        mood = recent_mood[-1]
+        st.markdown(
+            f"**🧠 Mood Update:** {mood['Name']} felt {mood['Mood']} — {mood['Note']}"
+        )
+
     if next_event:
-        dt = datetime.strptime(next_event['Date'], "%Y-%m-%d").replace(tzinfo=tz)
-        diff = dt - datetime.now(tz)
-        days_left, hours = diff.days, diff.seconds // 3600
-        minutes, seconds = (diff.seconds % 3600) // 60, diff.seconds % 60
-        st.info(f"Next: {next_event['Title']} in {days_left}d {hours}h {minutes}m {seconds}s")
+        event_datetime = datetime.strptime(
+            next_event["Date"], "%Y-%m-%d"
+        ).replace(tzinfo=tz)
+        time_left = event_datetime - datetime.now(tz)
+        days_left = time_left.days
+        hours, rem = divmod(time_left.seconds, 3600)
+        minutes, seconds = divmod(rem, 60)
+        st.info(
+            f"📅 Next event in {days_left} days: **{next_event['Title']}** — {next_event['Date']}"
+        )
+        st.markdown(
+            f"<p style='text-align:center; font-size: 0.9em;'>⏳ Countdown: {days_left}d {hours}h {minutes}m {seconds}s</p>",
+            unsafe_allow_html=True
+        )
 
-# --- NOTES ---
+# --- NOTES PAGE ---
 elif menu == "💌 Notes":
-    st.header("💌 Notes")
-    with st.form("new_note_form"):
-        msg = st.text_area("New note:")
-        if st.form_submit_button("Send"):
-            notes_ws.append_row([current_user, msg, datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S"), ""])
-            st.experimental_rerun()
-    if "del_row" in st.session_state:
-        row = st.session_state.del_row
-        st.warning("Confirm delete? This action cannot be undone.")
-        if st.button("Delete"):    notes_ws.delete_rows(row); st.session_state.pop("del_row"); st.experimental_rerun()
-        if st.button("Cancel"):    st.session_state.pop("del_row")
-    notes_sorted = sorted(notes, key=lambda x: x['Timestamp'], reverse=True)
-    for i, n in enumerate(notes_sorted):
-        row_idx = notes.index(n) + 2
-        heart = "❤️" if n.get('LikedBy') and n['LikedBy'] != current_user else ""
-        c1, c2, c3 = st.columns([8, 1, 1])
-        c1.markdown(f"📅 {n['Timestamp']} — **{n['Name']}**: {n['Message']} {heart}")
-        if n['Name'] != current_user and not n.get('LikedBy'):
-            if c2.button("❤️", key=f"like_{i}"): notes_ws.update_cell(row_idx, 4, current_user)
-        if c3.button("🗑️", key=f"delete_{i}"): st.session_state.del_row = row_idx
+    st.header("💌 Daily Note to Each Other")
+    with st.form("note_form"):
+        message = st.text_area("Write a new note:")
+        submitted = st.form_submit_button("Send Note 💌")
+        if submitted:
+            if current_user and message:
+                timestamp = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
+                notes_ws.append_row(
+                    [current_user, message, timestamp, ""]
+                )
+                st.success("Note saved! ❤️")
+                st.experimental_rerun()
+            else:
+                st.warning("Please write something before submitting.")
 
-# --- BUCKET LIST ---
+    notes_sorted = sorted(
+        notes, key=lambda x: x["Timestamp"], reverse=True
+    )
+    grouped_notes = {}
+    for note in notes_sorted:
+        month = datetime.strptime(
+            note["Timestamp"], "%Y-%m-%d %H:%M:%S"
+        ).strftime("%B %Y")
+        grouped_notes.setdefault(month, []).append(note)
+
+    for month in grouped_notes:
+        st.subheader(f"🗓️ {month}")
+        for i, note in enumerate(grouped_notes[month]):
+            heart = (
+                "❤️"
+                if note.get("LikedBy") and note["LikedBy"] != current_user
+                else ""
+            )
+            col1, col2 = st.columns([9, 1])
+            col1.markdown(
+                f"📅 *{note['Timestamp']}* — **{note['Name']}**: {note['Message']} {heart}"
+            )
+            if (
+                note.get("Name") != current_user
+                and note.get("LikedBy") != current_user
+            ):
+                if col2.button("❤️", key=f"like_{month}_{i}"):
+                    row_idx = notes.index(note) + 2
+                    notes_ws.update_cell(row_idx, 4, current_user)
+                    st.experimental_rerun()
+
+# --- BUCKET LIST PAGE ---
 elif menu == "📝 Bucket List":
-    st.header("📝 Bucket List")
+    st.header("📝 Our Bucket List")
     if "del_b" in st.session_state:
         row = st.session_state.del_b
-        st.warning("Delete this item? Cannot be undone.")
-        if st.button("Delete Item"): bucket_ws.delete_rows(row); st.session_state.pop("del_b"); st.experimental_rerun()
-        if st.button("Cancel"):      st.session_state.pop("del_b")
-    for i, b in enumerate(bucket_items):
+        st.warning("Delete this item? This action cannot be undone.")
+        if st.button("Delete Item"):                    
+            bucket_ws.delete_rows(row)
+            del st.session_state["del_b"]
+            st.success("Item deleted.")
+            st.experimental_rerun()
+        if st.button("Cancel"):                       
+            del st.session_state["del_b"]
+    for i, item in enumerate(bucket_items):
         row_idx = i + 2
-        c1, c2 = st.columns([9, 1])
-        c1.markdown(f"✅ {b[0]}")
-        if c2.button("🗑️", key=f"bb{i}"): st.session_state.del_b = row_idx
-    with st.form("new_bucket_form"):
-        bi = st.text_input("New item:")
-        if st.form_submit_button("Add Item"): bucket_ws.append_row([bi, datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")]); st.experimental_rerun()
+        col1, col2 = st.columns([9, 1])
+        col1.markdown(f"✅ {item[0]}")
+        if col2.button("🗑️", key=f"delete_{i}"):
+            st.session_state["del_b"] = row_idx
 
-# --- CALENDAR ---
+    with st.form("bucket_form"):
+        new_item = st.text_input("Add something new to our list:")
+        submitted = st.form_submit_button("Add to Bucket List 🗺️")
+        if submitted:
+            if new_item:
+                timestamp = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
+                bucket_ws.append_row([new_item, timestamp])
+                st.success("Item added to bucket list! 🥾")
+                st.experimental_rerun()
+            else:
+                st.warning("Please type something before adding.")
+
+# --- CALENDAR PAGE ---
 elif menu == "📅 Calendar":
-    st.header("📅 Calendar")
+    st.header("📅 Our Shared Calendar")
     view = st.radio("View events:", ["Upcoming", "Past"])
-    events = upcoming if view == 'Upcoming' else past
+    events = upcoming_events if view == "Upcoming" else past_events
     if "del_c" in st.session_state:
         row = st.session_state.del_c
-        st.warning("Delete this event? Cannot be undone.")
-        if st.button("Delete Event"): calendar_ws.delete_rows(row); st.session_state.pop("del_c"); st.experimental_rerun()
-        if st.button("Cancel"):      st.session_state.pop("del_c")
+        st.warning("Delete this event? This action cannot be undone.")
+        if st.button("Delete Event"):   
+            calendar_ws.delete_rows(row)
+            del st.session_state["del_c"]
+            st.success("Event deleted.")
+            st.experimental_rerun()
+        if st.button("Cancel"):           
+            del st.session_state["del_c"]
     for i, e in enumerate(events):
         row_idx = calendar_items.index(e) + 2
-        c1, c2 = st.columns([8, 1])
-        c1.markdown(f"📍 {e['Date']} — **{e['Title']}**")
-        c1.markdown(e['Details'])
-        c1.markdown(f"<span class='small-text'>Pack: {e['Packing']}</span>", unsafe_allow_html=True)
-        if c2.button("🗑️", key=f"cc{i}"): st.session_state.del_c = row_idx
-    with st.form("new_event_form"):
-        t = st.text_input("Title:")
-        d = st.date_input("Date:")
-        det = st.text_area("Details:")
-        p = st.text_input("What to pack:")
-        if st.form_submit_button("Add Event"): calendar_ws.append_row([str(d), t, det, p, datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S"), "", ""]); st.experimental_rerun()
+        col1, col2 = st.columns([8, 1])
+        col1.markdown(f"📍 {e['Date']} — **{e['Title']}**")
+        col1.markdown(e['Details'])
+        col1.markdown(
+            f"<span class='small-text'>📝 What to pack: {e['Packing']}</span>",
+            unsafe_allow_html=True
+        )
+        if col2.button("🗑️", key=f"del_cal_{i}"):
+            st.session_state["del_c"] = row_idx
 
-# --- MOOD TRACKER ---
+    with st.form("calendar_form"):
+        event_title = st.text_input("Event title")
+        event_date = st.date_input("Event date")
+        event_desc = st.text_area("Event details")
+        event_pack = st.text_input("What to pack")
+        submitted = st.form_submit_button("Add Event")
+        if submitted:
+            created_time = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
+            calendar_ws.append_row([
+                str(event_date), event_title, event_desc,
+                event_pack, created_time, "", ""
+            ])
+            st.success("Event added to calendar! 📌")
+            st.experimental_rerun()
+
+# --- MOOD TRACKER PAGE ---
 elif menu == "📊 Mood Tracker":
-    st.header("📊 Mood Tracker")
-    opts = ["😊 Happy", "😔 Sad", "😤 Frustrated", "❤️ In Love", "😴 Tired", "😎 Confident", "Custom"]
-    with st.form("new_mood_form"):
-        mo = st.selectbox("How are you feeling?", opts)
-        cm = ""
-        if mo == "Custom": cm = st.text_input("Enter mood:")
-        note = st.text_area("Note (optional):")
-        if st.form_submit_button("Log Mood"): mood_ws.append_row([current_user, cm if cm else mo, note, datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")]); st.experimental_rerun()
-    for m in reversed(mood_entries):
-        st.markdown(f"📅 {m['Timestamp']} — **{m['Name']}** felt *{m['Mood']}* — {m['Note']}")
+    st.header("📊 Daily Mood Check-In")
+    mood_options = [
+        "😊 Happy", "😔 Sad", "😤 Frustrated", "❤️ In Love",
+        "😴 Tired", "😎 Confident", "Custom"
+    ]
+    with st.form("mood_form"):
+        mood = st.selectbox("How are you feeling today?", mood_options)
+        custom_mood = ""
+        if mood == "Custom":
+            custom_mood = st.text_input("Enter your custom mood")
+        note = st.text_area("Optional note")
+        submitted = st.form_submit_button("Submit Mood")
+        if submitted:
+            final_mood = custom_mood if mood == "Custom" else mood
+            timestamp = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
+            mood_ws.append_row([current_user, final_mood, note, timestamp])
+            st.success("Mood logged! 🧠")
+            st.experimental_rerun()
+
+    st.subheader("💬 Past Mood Entries")
+    for entry in reversed(mood_entries):
+        st.markdown(
+            f"📅 *{entry['Timestamp']}* — **{entry['Name']}** felt *{entry['Mood']}* — {entry['Note']}"
+        )
