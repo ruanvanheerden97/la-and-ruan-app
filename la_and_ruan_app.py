@@ -159,8 +159,8 @@ if menu == "🏠 Home":
         dt = datetime.strptime(next_event['Date'], "%Y-%m-%d").replace(tzinfo=tz)
         diff = dt - datetime.now(tz)
         d, rem = diff.days, diff.seconds
-        h = rem//3600; m = (rem%3600)//60; s = rem%60
-        st.info(f"Next: **{next_event['Title']}** in {d}d {h}h {m}m {s}s")
+        h = rem//3600; mi = (rem%3600)//60; s = rem%60
+        st.info(f"Next: **{next_event['Title']}** in {d}d {h}h {mi}m {s}s")
 
 # --- NOTES PAGE ---
 elif menu == "💌 Notes":
@@ -173,7 +173,7 @@ elif menu == "💌 Notes":
             notes = fetch_data()[0]
             st.success("Sent! ❤️")
 
-    # Display and edit existing notes
+    # Display and inline-edit existing notes
     sorted_notes = sorted(notes, key=lambda x: x['Timestamp'], reverse=True)
     for n in sorted_notes:
         row_idx = notes.index(n) + 2
@@ -181,22 +181,22 @@ elif menu == "💌 Notes":
         c1, c2, c3 = st.columns([7,1,1])
         with c1:
             st.markdown(f"*{n['Timestamp']}* — **{n['Name']}**: {n['Message']} {heart}")
+        # Like button
         if n['Name'] != current_user and not n.get('LikedBy'):
             if c2.button('❤️', key=f"like_{row_idx}"):
                 notes_ws.update_cell(row_idx, 4, current_user)
                 notes = fetch_data()[0]
                 st.experimental_rerun()
+        # Edit button
         if c3.button('✏️', key=f"edit_{row_idx}"):
             st.session_state['edit_row'] = row_idx
-            st.session_state['edit_text'] = n['Message']
-
-    if 'edit_row' in st.session_state:
-        er = st.session_state['edit_row']
-        new_text = st.text_area("Edit note:", value=st.session_state.get('edit_text', ''))
-        if st.button('Save', key=f"save_{er}"):
-            notes_ws.update_cell(er, 3, new_text)
-            del st.session_state['edit_row'], st.session_state['edit_text']
-            notes = fetch_data()[0]
+n        # Inline edit form
+        if st.session_state.get('edit_row') == row_idx:
+            new_msg = st.text_area("Edit note:", value=st.session_state.get('edit_text', n['Message']), key=f"edit_text_{row_idx}")
+            if st.button('Save', key=f"save_{row_idx}"):
+                notes_ws.update_cell(row_idx, 3, new_msg)
+                del st.session_state['edit_row']
+                notes = fetch_data()[0]
 
 # --- BUCKET LIST PAGE ---
 elif menu == "📝 Bucket List":
