@@ -48,12 +48,14 @@ if "current_user" not in st.session_state:
         if c1.button("La"):
             st.session_state.current_user = "La"
             st.session_state.last_login_time = datetime.now(tz)
-            placeholder.empty()
         if c2.button("Ruan"):
             st.session_state.current_user = "Ruan"
             st.session_state.last_login_time = datetime.now(tz)
-            placeholder.empty()
-    st.stop()
+    # if still no user, stop to show login only
+    if "current_user" not in st.session_state:
+        st.stop()
+    # once selected, clear placeholder and continue
+    placeholder.empty()
 
 current_user = st.session_state.current_user
 last_login_time = st.session_state.get("last_login_time", datetime.now(tz) - timedelta(days=1))
