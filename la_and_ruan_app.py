@@ -190,7 +190,7 @@ elif menu == "📝 Bucket List":
     if 'del_b' in st.session_state:
         r = st.session_state.del_b
         st.warning("Delete this item?")
-        if st.button('Yes'): bucket_ws.delete_row(r); notes, bucket_items, calendar_items, mood_entries = fetch_data(); del st.session_state['del_b']; st.success('Deleted')
+        if st.button('Yes'): bucket_ws.delete_rows(r); notes, bucket_items, calendar_items, mood_entries = fetch_data(); del st.session_state['del_b']; st.success('Deleted')
         if st.button('No'): del st.session_state['del_b']
     for i, b in enumerate(bucket_items):
         c1, c2 = st.columns([9,1])
@@ -211,7 +211,7 @@ elif menu == "📅 Calendar":
     if 'del_c' in st.session_state:
         r = st.session_state.del_c
         st.warning('Delete this event?')
-        if st.button('Yes'): calendar_ws.delete_row(r); notes, bucket_items, calendar_items, mood_entries = fetch_data(); upcoming_events,past_events = get_events(calendar_items); del st.session_state['del_c']; st.success('Deleted')
+        if st.button('Yes'): calendar_ws.delete_rows(r); notes, bucket_items, calendar_items, mood_entries = fetch_data(); upcoming_events,past_events = get_events(calendar_items); del st.session_state['del_c']; st.success('Deleted')
         if st.button('No'): del st.session_state['del_c']
     for idx, e in enumerate(events):
         ridx = calendar_items.index(e)+2
