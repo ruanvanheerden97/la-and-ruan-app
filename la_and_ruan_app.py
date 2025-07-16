@@ -176,30 +176,27 @@ elif menu == "💌 Notes":
     # Display and edit existing notes
     sorted_notes = sorted(notes, key=lambda x: x['Timestamp'], reverse=True)
     for n in sorted_notes:
-        row_idx = sorted_notes.index(n) + 2  # offset for header row
+        row_idx = notes.index(n) + 2
         heart = '❤️' if n.get('LikedBy') and n['LikedBy'] != current_user else ''
-        col1, col2, col3 = st.columns([7,1,1])
-        with col1:
+        c1, c2, c3 = st.columns([7,1,1])
+        with c1:
             st.markdown(f"*{n['Timestamp']}* — **{n['Name']}**: {n['Message']} {heart}")
-        # Like button
         if n['Name'] != current_user and not n.get('LikedBy'):
-            if col2.button('❤️', key=f"like_{row_idx}"):
+            if c2.button('❤️', key=f"like_{row_idx}"):
                 notes_ws.update_cell(row_idx, 4, current_user)
                 notes = fetch_data()[0]
                 st.experimental_rerun()
-        # Edit button
-        if col3.button('✏️', key=f"edit_{row_idx}"):
+        if c3.button('✏️', key=f"edit_{row_idx}"):
             st.session_state['edit_row'] = row_idx
             st.session_state['edit_text'] = n['Message']
-            st.experimental_rerun()
-        # If in edit mode for this row
-        if st.session_state.get('edit_row') == row_idx:
-            new_msg = st.text_area("Edit note:", value=st.session_state.get('edit_text', ''))
-            if st.button('Save', key=f"save_{row_idx}"):
-                notes_ws.update_cell(row_idx, 3, new_msg)
-                del st.session_state['edit_row'], st.session_state['edit_text']
-                notes = fetch_data()[0]
-                st.experimental_rerun()
+
+    if 'edit_row' in st.session_state:
+        er = st.session_state['edit_row']
+        new_text = st.text_area("Edit note:", value=st.session_state.get('edit_text', ''))
+        if st.button('Save', key=f"save_{er}"):
+            notes_ws.update_cell(er, 3, new_text)
+            del st.session_state['edit_row'], st.session_state['edit_text']
+            notes = fetch_data()[0]
 
 # --- BUCKET LIST PAGE ---
 elif menu == "📝 Bucket List":
