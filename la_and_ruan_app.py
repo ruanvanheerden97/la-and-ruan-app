@@ -190,7 +190,7 @@ elif menu == "💌 Notes":
         # Edit button
         if c3.button('✏️', key=f"edit_{row_idx}"):
             st.session_state['edit_row'] = row_idx
-n        # Inline edit form
+       # Inline edit form
         if st.session_state.get('edit_row') == row_idx:
             new_msg = st.text_area("Edit note:", value=st.session_state.get('edit_text', n['Message']), key=f"edit_text_{row_idx}")
             if st.button('Save', key=f"save_{row_idx}"):
