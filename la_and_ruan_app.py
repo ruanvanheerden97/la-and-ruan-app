@@ -125,7 +125,6 @@ elif menu == "💌 Notes":
             if c2.button('❤️', key=f"like_{row_idx}"):
                 notes_ws.update_cell(row_idx, 4, current_user)
                 notes = fetch_data()[0]
-                st.experimental_rerun()
         # Edit button
         if c3.button('✏️', key=f"edit_{row_idx}"):
             st.session_state['edit_row'] = row_idx
@@ -134,11 +133,10 @@ elif menu == "💌 Notes":
         if st.session_state.get('edit_row') == row_idx:
             new_msg = st.text_area("Edit note:", value=st.session_state.get('edit_text', n['Message']), key=f"edit_text_{row_idx}")
             if st.button('Save', key=f"save_{row_idx}"):
-                # Update the Message column (col 2) instead of Timestamp
+                # Update the Message column (col 2)
                 notes_ws.update_cell(row_idx, 2, new_msg)
                 del st.session_state['edit_row'], st.session_state['edit_text']
                 notes = fetch_data()[0]
-                st.experimental_rerun()
 
 # --- BUCKET LIST PAGE ---
 elif menu == "📝 Bucket List":
