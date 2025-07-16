@@ -61,7 +61,6 @@ def get_events(items):
     return upcoming, past
 
 upcoming_events, past_events = get_events(calendar_items)
-next_event = upcoming_events[0] if upcoming_events else None
 
 # --- RECENT CHANGES ---
 now = datetime.now(tz)
@@ -114,12 +113,12 @@ if menu == "🏠 Home":
     if recent_mood:
         m = recent_mood[-1]
         st.markdown(f"🧠 {m['Name']} felt {m['Mood']}")
-    if next_event:
-        dt = datetime.strptime(next_event['Date'], "%Y-%m-%d").replace(tzinfo=tz)
+    if upcoming_events:
+        dt = datetime.strptime(upcoming_events[0]['Date'], "%Y-%m-%d").replace(tzinfo=tz)
         diff = dt - now
         d, rem = diff.days, diff.seconds
         h, mi, s = rem//3600, (rem%3600)//60, rem%60
-        st.info(f"Next: **{next_event['Title']}** in {d}d {h}h {mi}m {s}s")
+        st.info(f"Next: **{upcoming_events[0]['Title']}** in {d}d {h}h {mi}m {s}s")
 
 # --- NOTES PAGE ---
 elif menu == "💌 Notes":
@@ -174,19 +173,38 @@ elif menu == "📅 Calendar":
     st.header("📅 Our Shared Calendar")
     view = st.radio('View', ['Upcoming Events','Past Events'])
     events = upcoming_events if view=='Upcoming Events' else past_events
+    # Deletion prompt
     if 'del_c' in st.session_state:
         r = st.session_state.del_c
         st.warning('Delete this event?')
         if st.button('Yes'): calendar_ws.delete_rows(r); notes, bucket_items, calendar_items, mood_entries = fetch_data(); upcoming_events, past_events = get_events(calendar_items); del st.session_state['del_c']; st.success('Deleted')
         if st.button('No'): del st.session_state['del_c']
+    # Display and edit
     for idx, e in enumerate(events):
         ridx = calendar_items.index(e)+2
-        c1, c2 = st.columns([8,1])
+        c1, c2, c3 = st.columns([6,1,1])
         c1.markdown(f"📍 {e['Date']} — **{e['Title']}**")
         c1.markdown(e['Details'])
         c1.markdown(f"<span class='small-text'>Pack: {e['Packing']}</span>", unsafe_allow_html=True)
         if view=='Upcoming Events':
-            if c2.button('🗑️', key=f"del_c_{idx}"): st.session_state['del_c']=ridx
+            if c2.button('✏️', key=f"edit_c_{ridx}"):
+                st.session_state['edit_cal'] = ridx
+                st.session_state['edit_cal_data'] = e.copy()
+            if c3.button('🗑️', key=f"del_c_{ridx}"): st.session_state['del_c'] = ridx
+        # Edit form
+        if st.session_state.get('edit_cal') == ridx:
+            data = st.session_state['edit_cal_data']
+            new_date = st.date_input('Date', value=datetime.strptime(data['Date'], "%Y-%m-%d"))
+            new_title = st.text_input('Title', value=data['Title'])
+            new_details = st.text_area('Details', value=data['Details'])
+            new_pack = st.text_input('Packing', value=data['Packing'])
+            if st.button('Save Changes', key=f"save_cal_{ridx}"):
+                calendar_ws.update(ridx, 1, [[new_date.strftime("%Y-%m-%d"), new_title, new_details, new_pack]])
+                del st.session_state['edit_cal'], st.session_state['edit_cal_data']
+                notes, bucket_items, calendar_items, mood_entries = fetch_data()
+                upcoming_events, past_events = get_events(calendar_items)
+                st.success('Event updated!')
+    # Add new event
     with st.form('calendar_form'):
         t = st.text_input('Event title')
         d = st.date_input('Event date')
