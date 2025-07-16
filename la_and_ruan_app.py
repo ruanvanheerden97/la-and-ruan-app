@@ -60,16 +60,11 @@ if "current_user" not in st.session_state:
         c1, c2 = st.columns(2)
         with c1:
             if os.path.exists("la.jpg"): st.image("la.jpg", caption="La 🌻", use_container_width=True)
-            if st.button("I'm La"):
-                st.session_state.current_user = "La"
-                st.session_state.last_login_time = datetime.now(tz)
+            if st.button("I'm La"): st.session_state.current_user = "La"; st.session_state.last_login_time = datetime.now(tz)
         with c2:
             if os.path.exists("ruan.jpg"): st.image("ruan.jpg", caption="Ruan 🚴‍♂️", use_container_width=True)
-            if st.button("I'm Ruan"):
-                st.session_state.current_user = "Ruan"
-                st.session_state.last_login_time = datetime.now(tz)
-    if "current_user" not in st.session_state:
-        st.stop()
+            if st.button("I'm Ruan"): st.session_state.current_user = "Ruan"; st.session_state.last_login_time = datetime.now(tz)
+    if "current_user" not in st.session_state: st.stop()
     placeholder.empty()
 
 current_user = st.session_state.current_user
@@ -170,19 +165,41 @@ if menu == "🏠 Home":
 # --- NOTES PAGE ---
 elif menu == "💌 Notes":
     st.header("💌 Daily Notes")
+    # New note form
     with st.form("note_form"):
         msg = st.text_area("Share a note:")
         if st.form_submit_button("Send 💌") and msg:
             notes_ws.append_row([current_user, msg, datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S"), ""])
             notes = fetch_data()[0]
             st.success("Sent! ❤️")
-    for n in sorted(notes, key=lambda x: x['Timestamp'], reverse=True):
+
+    # Display and edit existing notes
+    sorted_notes = sorted(notes, key=lambda x: x['Timestamp'], reverse=True)
+    for n in sorted_notes:
+        row_idx = sorted_notes.index(n) + 2  # offset for header row
         heart = '❤️' if n.get('LikedBy') and n['LikedBy'] != current_user else ''
-        col1, col2 = st.columns([9,1])
-        col1.markdown(f"*{n['Timestamp']}* — **{n['Name']}**: {n['Message']} {heart}")
+        col1, col2, col3 = st.columns([7,1,1])
+        with col1:
+            st.markdown(f"*{n['Timestamp']}* — **{n['Name']}**: {n['Message']} {heart}")
+        # Like button
         if n['Name'] != current_user and not n.get('LikedBy'):
-            if col2.button('❤️', key=n['Timestamp']):
-                notes_ws.update_cell(notes.index(n)+2, 4, current_user)
+            if col2.button('❤️', key=f"like_{row_idx}"):
+                notes_ws.update_cell(row_idx, 4, current_user)
+                notes = fetch_data()[0]
+                st.experimental_rerun()
+        # Edit button
+        if col3.button('✏️', key=f"edit_{row_idx}"):
+            st.session_state['edit_row'] = row_idx
+            st.session_state['edit_text'] = n['Message']
+            st.experimental_rerun()
+        # If in edit mode for this row
+        if st.session_state.get('edit_row') == row_idx:
+            new_msg = st.text_area("Edit note:", value=st.session_state.get('edit_text', ''))
+            if st.button('Save', key=f"save_{row_idx}"):
+                notes_ws.update_cell(row_idx, 3, new_msg)
+                del st.session_state['edit_row'], st.session_state['edit_text']
+                notes = fetch_data()[0]
+                st.experimental_rerun()
 
 # --- BUCKET LIST PAGE ---
 elif menu == "📝 Bucket List":
