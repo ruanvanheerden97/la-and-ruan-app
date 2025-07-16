@@ -49,12 +49,10 @@ if "current_user" not in st.session_state:
             st.session_state.current_user = "La"
             st.session_state.last_login_time = datetime.now(tz)
             placeholder.empty()
-            st.experimental_rerun()
         if c2.button("Ruan"):
             st.session_state.current_user = "Ruan"
             st.session_state.last_login_time = datetime.now(tz)
             placeholder.empty()
-            st.experimental_rerun()
     st.stop()
 
 current_user = st.session_state.current_user
@@ -164,19 +162,11 @@ if menu == "🏠 Home":
     with col1:
         oaty_path = "oaty_and_la.png"
         if os.path.exists(oaty_path):
-            st.image(
-                oaty_path,
-                caption="🐾 La & Oaty",
-                use_container_width=True
-            )
+            st.image(oaty_path, caption="🐾 La & Oaty", use_container_width=True)
     with col2:
         ruan_path = "ruan.jpg"
         if os.path.exists(ruan_path):
-            st.image(
-                ruan_path,
-                caption="🚴‍♂️ Ruan",
-                use_container_width=True
-            )
+            st.image(ruan_path, caption="🚴‍♂️ Ruan", use_container_width=True)
 
     st.subheader("🔔 New Since Your Last Visit")
     if recent_notes:
@@ -184,7 +174,7 @@ if menu == "🏠 Home":
         for n in recent_notes:
             st.markdown(f"📅 *{n['Timestamp']}* — **{n['Name']}**: {n['Message']}")
     if recent_bucket:
-        st.markdown(f"**🗺️ New Bucket List Item:** {recent_bucket[-1]}")
+        st.markdown(f"**🗺️ New Bucket List Item:** {recent_bucket[-1]}" )
     if recent_calendar:
         event = recent_calendar[-1]
         st.markdown(
@@ -201,9 +191,10 @@ if menu == "🏠 Home":
             next_event["Date"], "%Y-%m-%d"
         ).replace(tzinfo=tz)
         time_left = event_datetime - datetime.now(tz)
-        days_left = time_left.days
-        hours, rem = divmod(time_left.seconds, 3600)
-        minutes, seconds = divmod(rem, 60)
+        days_left, rem = time_left.days, time_left.seconds
+        hours = rem // 3600
+        minutes = (rem % 3600) // 60
+        seconds = rem % 60
         st.info(
             f"📅 Next event in {days_left} days: **{next_event['Title']}** — {next_event['Date']}"
         )
@@ -221,44 +212,31 @@ elif menu == "💌 Notes":
         if submitted:
             if current_user and message:
                 timestamp = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
-                notes_ws.append_row(
-                    [current_user, message, timestamp, ""]
-                )
+                notes_ws.append_row([current_user, message, timestamp, ""])
                 st.success("Note saved! ❤️")
-                st.experimental_rerun()
+                # no explicit rerun needed
             else:
                 st.warning("Please write something before submitting.")
 
-    notes_sorted = sorted(
-        notes, key=lambda x: x["Timestamp"], reverse=True
-    )
+    notes_sorted = sorted(notes, key=lambda x: x["Timestamp"], reverse=True)
     grouped_notes = {}
     for note in notes_sorted:
-        month = datetime.strptime(
-            note["Timestamp"], "%Y-%m-%d %H:%M:%S"
-        ).strftime("%B %Y")
+        month = datetime.strptime(note["Timestamp"], "%Y-%m-%d %H:%M:%S").strftime("%B %Y")
         grouped_notes.setdefault(month, []).append(note)
-
-    for month in grouped_notes:
+    for month, items in grouped_notes.items():
         st.subheader(f"🗓️ {month}")
-        for i, note in enumerate(grouped_notes[month]):
+        for i, note in enumerate(items):
             heart = (
-                "❤️"
-                if note.get("LikedBy") and note["LikedBy"] != current_user
-                else ""
+                "❤️" if note.get("LikedBy") and note["LikedBy"] != current_user else ""
             )
-            col1, col2 = st.columns([9, 1])
-            col1.markdown(
+            c1, c2 = st.columns([9, 1])
+            c1.markdown(
                 f"📅 *{note['Timestamp']}* — **{note['Name']}**: {note['Message']} {heart}"
             )
-            if (
-                note.get("Name") != current_user
-                and note.get("LikedBy") != current_user
-            ):
-                if col2.button("❤️", key=f"like_{month}_{i}"):
-                    row_idx = notes.index(note) + 2
-                    notes_ws.update_cell(row_idx, 4, current_user)
-                    st.experimental_rerun()
+            if note.get("Name") != current_user and not note.get("LikedBy"):
+                if c2.button("❤️", key=f"like_{month}_{i}"):
+                    idx = notes.index(note) + 2
+                    notes_ws.update_cell(idx, 4, current_user)
 
 # --- BUCKET LIST PAGE ---
 elif menu == "📝 Bucket List":
@@ -266,31 +244,17 @@ elif menu == "📝 Bucket List":
     if "del_b" in st.session_state:
         row = st.session_state.del_b
         st.warning("Delete this item? This action cannot be undone.")
-        if st.button("Delete Item"):                    
-            bucket_ws.delete_rows(row)
-            del st.session_state["del_b"]
-            st.success("Item deleted.")
-            st.experimental_rerun()
-        if st.button("Cancel"):                       
-            del st.session_state["del_b"]
+        if st.button("Delete Item"): bucket_ws.delete_rows(row); del st.session_state["del_b"]; st.success("Item deleted.")
+        if st.button("Cancel"): del st.session_state["del_b"]
     for i, item in enumerate(bucket_items):
         row_idx = i + 2
-        col1, col2 = st.columns([9, 1])
-        col1.markdown(f"✅ {item[0]}")
-        if col2.button("🗑️", key=f"delete_{i}"):
-            st.session_state["del_b"] = row_idx
-
+        c1, c2 = st.columns([9, 1])
+        c1.markdown(f"✅ {item[0]}")
+        if c2.button("🗑️", key=f"del_b_{i}"): st.session_state["del_b"] = row_idx
     with st.form("bucket_form"):
         new_item = st.text_input("Add something new to our list:")
-        submitted = st.form_submit_button("Add to Bucket List 🗺️")
-        if submitted:
-            if new_item:
-                timestamp = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
-                bucket_ws.append_row([new_item, timestamp])
-                st.success("Item added to bucket list! 🥾")
-                st.experimental_rerun()
-            else:
-                st.warning("Please type something before adding.")
+        if st.form_submit_button("Add to Bucket List 🗺️"):
+            if new_item: bucket_ws.append_row([new_item, datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")]); st.success("Item added! 🥾")
 
 # --- CALENDAR PAGE ---
 elif menu == "📅 Calendar":
@@ -300,63 +264,35 @@ elif menu == "📅 Calendar":
     if "del_c" in st.session_state:
         row = st.session_state.del_c
         st.warning("Delete this event? This action cannot be undone.")
-        if st.button("Delete Event"):   
-            calendar_ws.delete_rows(row)
-            del st.session_state["del_c"]
-            st.success("Event deleted.")
-            st.experimental_rerun()
-        if st.button("Cancel"):           
-            del st.session_state["del_c"]
+        if st.button("Delete Event"): calendar_ws.delete_rows(row); del st.session_state["del_c"]; st.success("Event deleted.")
+        if st.button("Cancel"): del st.session_state["del_c"]
     for i, e in enumerate(events):
         row_idx = calendar_items.index(e) + 2
-        col1, col2 = st.columns([8, 1])
-        col1.markdown(f"📍 {e['Date']} — **{e['Title']}**")
-        col1.markdown(e['Details'])
-        col1.markdown(
-            f"<span class='small-text'>📝 What to pack: {e['Packing']}</span>",
-            unsafe_allow_html=True
-        )
-        if col2.button("🗑️", key=f"del_cal_{i}"):
-            st.session_state["del_c"] = row_idx
-
+        c1, c2 = st.columns([8, 1])
+        c1.markdown(f"📍 {e['Date']} — **{e['Title']}**")
+        c1.markdown(e['Details'])
+        c1.markdown(f"<span class='small-text'>📝 What to pack: {e['Packing']}</span>", unsafe_allow_html=True)
+        if c2.button("🗑️", key=f"del_c_{i}"): st.session_state["del_c"] = row_idx
     with st.form("calendar_form"):
-        event_title = st.text_input("Event title")
-        event_date = st.date_input("Event date")
-        event_desc = st.text_area("Event details")
-        event_pack = st.text_input("What to pack")
-        submitted = st.form_submit_button("Add Event")
-        if submitted:
-            created_time = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
-            calendar_ws.append_row([
-                str(event_date), event_title, event_desc,
-                event_pack, created_time, "", ""
-            ])
-            st.success("Event added to calendar! 📌")
-            st.experimental_rerun()
+        title = st.text_input("Event title")
+        date = st.date_input("Event date")
+        desc = st.text_area("Event details")
+        pack = st.text_input("What to pack")
+        if st.form_submit_button("Add Event"): calendar_ws.append_row([
+            str(date), title, desc, pack, datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S"), "", ""
+        ]); st.success("Event added! 📌")
 
 # --- MOOD TRACKER PAGE ---
 elif menu == "📊 Mood Tracker":
     st.header("📊 Daily Mood Check-In")
-    mood_options = [
-        "😊 Happy", "😔 Sad", "😤 Frustrated", "❤️ In Love",
-        "😴 Tired", "😎 Confident", "Custom"
-    ]
+    mood_opts = ["😊 Happy","😔 Sad","😤 Frustrated","❤️ In Love","😴 Tired","😎 Confident","Custom"]
     with st.form("mood_form"):
-        mood = st.selectbox("How are you feeling today?", mood_options)
-        custom_mood = ""
-        if mood == "Custom":
-            custom_mood = st.text_input("Enter your custom mood")
+        mood = st.selectbox("How are you feeling today?", mood_opts)
+        custom = ""
+        if mood == "Custom": custom = st.text_input("Enter your custom mood")
         note = st.text_area("Optional note")
-        submitted = st.form_submit_button("Submit Mood")
-        if submitted:
-            final_mood = custom_mood if mood == "Custom" else mood
-            timestamp = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
-            mood_ws.append_row([current_user, final_mood, note, timestamp])
-            st.success("Mood logged! 🧠")
-            st.experimental_rerun()
-
+        if st.form_submit_button("Submit Mood"): mood_ws.append_row([
+            current_user, custom if custom else mood, note, datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
+        ]); st.success("Mood logged! 🧠")
     st.subheader("💬 Past Mood Entries")
-    for entry in reversed(mood_entries):
-        st.markdown(
-            f"📅 *{entry['Timestamp']}* — **{entry['Name']}** felt *{entry['Mood']}* — {entry['Note']}"
-        )
+    for m in reversed(mood_entries): st.markdown(f"📅 *{m['Timestamp']}* — **{m['Name']}** felt *{m['Mood']}* — {m['Note']}")
