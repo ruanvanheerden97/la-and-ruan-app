@@ -5,6 +5,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 import os
 import json
 from pytz import timezone
+import time
 
 # --- TIMEZONE SETUP ---
 tz = timezone("Africa/Harare")
@@ -41,40 +42,40 @@ mood_entries = mood_ws.get_all_records()
 
 # --- LOGIN POPUP ---
 if "current_user" not in st.session_state:
-    login_ph = st.empty()
-    with login_ph.container():
+    login_placeholder = st.empty()
+    with login_placeholder.container():
         st.markdown("## Who's using the app?")
-        c1, c2 = st.columns(2)
-        with c1:
+        col1, col2 = st.columns(2)
+        with col1:
             if st.button("La"):
                 st.session_state.current_user = "La"
-                st.session_state.last_login = datetime.now(tz)
-                login_ph.empty()
-                st.rerun()
-        with c2:
+                st.session_state.last_login_time = datetime.now(tz)
+                login_placeholder.empty()
+                st.experimental_rerun()
+        with col2:
             if st.button("Ruan"):
                 st.session_state.current_user = "Ruan"
-                st.session_state.last_login = datetime.now(tz)
-                login_ph.empty()
-                st.rerun()
+                st.session_state.last_login_time = datetime.now(tz)
+                login_placeholder.empty()
+                st.experimental_rerun()
     st.stop()
 
 current_user = st.session_state.current_user
-last_login = st.session_state.get("last_login", datetime.now(tz) - timedelta(days=1))
+last_login_time = st.session_state.get("last_login_time", datetime.now(tz) - timedelta(days=1))
 
-# --- EVENT PROCESSING ---
+# --- FILTER CALENDAR EVENTS ---
 calendar_items_sorted = sorted(calendar_items, key=lambda x: datetime.strptime(x["Date"], "%Y-%m-%d"))
-upcoming_events = [e for e in calendar_items_sorted if str(e.get("Completed", "")).upper() != "TRUE" and datetime.strptime(e["Date"], "%Y-%m-%d").date() >= datetime.now(tz).date()]
-past_events = [e for e in calendar_items_sorted if str(e.get("Completed", "")).upper() == "TRUE"]
+upcoming_events = [e for e in calendar_items_sorted if str(e.get("Completed", "")).strip().upper() != "TRUE" and datetime.strptime(e["Date"], "%Y-%m-%d").date() >= datetime.now(tz).date()]
+past_events = [e for e in calendar_items_sorted if str(e.get("Completed", "")).strip().upper() == "TRUE"]
 next_event = upcoming_events[0] if upcoming_events else None
 
 # --- RECENT CHANGES ---
-recent_notes = [n for n in notes if tz.localize(datetime.strptime(n["Timestamp"], "%Y-%m-%d %H:%M:%S")) > last_login]
-recent_bucket = [item[0] for item in bucket_items if len(item) > 1 and item[1] and tz.localize(datetime.strptime(item[1], "%Y-%m-%d %H:%M:%S")) > last_login]
-recent_calendar = [e for e in calendar_items if tz.localize(datetime.strptime(e.get("Created", "1970-01-01 00:00:00"), "%Y-%m-%d %H:%M:%S")) > last_login and str(e.get("Completed", "")).upper() != "TRUE"]
-recent_mood = [m for m in mood_entries if tz.localize(datetime.strptime(m["Timestamp"], "%Y-%m-%d %H:%M:%S")) > last_login]
+recent_notes = [n for n in notes if tz.localize(datetime.strptime(n["Timestamp"], "%Y-%m-%d %H:%M:%S")) > last_login_time]
+recent_bucket = [item[0] for item in bucket_items if len(item) > 1 and item[1] and tz.localize(datetime.strptime(item[1], "%Y-%m-%d %H:%M:%S")) > last_login_time]
+recent_calendar = [e for e in calendar_items if tz.localize(datetime.strptime(e["Created"], "%Y-%m-%d %H:%M:%S")) > last_login_time and str(e.get("Completed", "")).strip().upper() != "TRUE"]
+recent_mood = [m for m in mood_entries if tz.localize(datetime.strptime(m["Timestamp"], "%Y-%m-%d %H:%M:%S")) > last_login_time]
 
-# --- STYLING ---
+# --- PAGE STYLING ---
 st.set_page_config(page_title="La & Ruan App", layout="centered", initial_sidebar_state="collapsed")
 st.markdown("""
 <style>
@@ -116,7 +117,7 @@ textarea, input, .stButton>button, select {
 """, unsafe_allow_html=True)
 
 # --- SIDEBAR MENU ---
-menu = st.sidebar.selectbox("📂 Menu", ["🏠 Home", "💌 Notes", "📝 Bucket List", "📅 Calendar", "📊 Mood Tracker"])
+menu = st.sidebar.selectbox("📂 Menu", ["🏠 Home", "💌 Notes", "📝 Bucket List", "📅 Calendar", "📊 Mood Tracker"] )
 
 # --- HOME PAGE ---
 if menu == "🏠 Home":
@@ -144,8 +145,8 @@ if menu == "🏠 Home":
         dt = datetime.strptime(next_event['Date'], "%Y-%m-%d").replace(tzinfo=tz)
         diff = dt - datetime.now(tz)
         d, h = diff.days, diff.seconds // 3600
-        m, s = (diff.seconds % 3600) // 60, diff.seconds % 60
-        st.info(f"📅 Next event: **{next_event['Title']}** in {d}d {h}h {m}m {s}s")
+        m_ss, s = (diff.seconds % 3600) // 60, diff.seconds % 60
+        st.info(f"📅 Next event: **{next_event['Title']}** in {d}d {h}h {m_ss}m {s}s")
 
 # --- NOTES PAGE ---
 elif menu == "💌 Notes":
@@ -166,7 +167,7 @@ elif menu == "💌 Notes":
         row = st.session_state.delete_note_row
         st.error("Are you sure you want to delete this note? This action cannot be undone.")
         if st.button("Confirm Delete"):
-            notes_ws.delete_row(row)
+            notes_ws.delete_rows(row)
             del st.session_state["delete_note_row"]
             st.success("Note deleted.")
             st.experimental_rerun()
@@ -185,6 +186,7 @@ elif menu == "💌 Notes":
                 st.experimental_rerun()
         if c3.button("🗑️", key=f"delete_note_{idx}"):
             st.session_state.delete_note_row = row_idx
+            st.experimental_rerun()
 
 # --- BUCKET LIST PAGE ---
 elif menu == "📝 Bucket List":
@@ -194,7 +196,7 @@ elif menu == "📝 Bucket List":
         row = st.session_state.delete_bucket_row
         st.error("Delete this bucket list item? This action cannot be undone.")
         if st.button("Confirm Delete Item"):
-            bucket_ws.delete_row(row)
+            bucket_ws.delete_rows(row)
             del st.session_state["delete_bucket_row"]
             st.success("Item deleted.")
             st.experimental_rerun()
@@ -207,6 +209,7 @@ elif menu == "📝 Bucket List":
         c1.markdown(f"✅ {it[0]}")
         if c2.button("🗑️", key=f"delete_bucket_{idx}"):
             st.session_state.delete_bucket_row = row_idx
+            st.experimental_rerun()
     # Add item
     with st.form("new_bucket_form"):
         item_text = st.text_input("Add new bucket list item:")
@@ -229,7 +232,7 @@ elif menu == "📅 Calendar":
         row = st.session_state.delete_event_row
         st.error("Delete this event? This action cannot be undone.")
         if st.button("Confirm Delete Event"):
-            calendar_ws.delete_row(row)
+            calendar_ws.delete_rows(row)
             del st.session_state["delete_event_row"]
             st.success("Event deleted.")
             st.experimental_rerun()
@@ -242,19 +245,7 @@ elif menu == "📅 Calendar":
         c1.markdown(f"📍 {e['Date']} — **{e['Title']}**")
         c1.markdown(e['Details'])
         c1.markdown(f"<span class='small-text'>Pack: {e['Packing']}</span>", unsafe_allow_html=True)
-        if c2.button("🗑️", key=f"delete_event_{idx}"):
-            st.session_state.delete_event_row = row_idx
-    # Add event form
-    with st.form("new_event_form"):
-        title = st.text_input("Event title:")
-        date = st.date_input("Event date:")
-        details = st.text_area("Event details:")
-        packing = st.text_input("What to pack:")
-        if st.form_submit_button("Add Event"):
-            ct = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
-            calendar_ws.append_row([str(date), title, details, packing, ct, "", ""])
-            st.success("Event added! 📌")
-            st.experimental_rerun()
+
 
 # --- MOOD TRACKER PAGE ---
 elif menu == "📊 Mood Tracker":
