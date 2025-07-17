@@ -125,9 +125,9 @@ if "current_user" not in st.session_state:
                     row = idxs[0] + 2
                     users_ws.update_cell(row, 2, now.strftime("%Y-%m-%d %H:%M:%S"))
                 placeholder.empty()
-    st.stop()
-
-current_user = st.session_state.current_user
+    # only stop if still no user selected
+    if "current_user" not in st.session_state:
+        st.stop()
 
 # --- PAGE SETUP & SIDEBAR ---
 st.set_page_config(page_title="La & Ruan App", layout="centered", initial_sidebar_state="collapsed")
