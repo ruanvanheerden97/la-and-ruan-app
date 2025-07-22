@@ -98,35 +98,56 @@ recent_mood = [
 # --- LOGIN POPUP WITH LAST-LOGIN DISPLAY ---
 if "current_user" not in st.session_state:
     placeholder = st.empty()
+
+    # show the two faces (they’re clickable)
     with placeholder.container():
-        st.markdown("## Who's using the app?")
-        last_times = {u['Name']: u.get('LastLogin','never') for u in users}
+        st.markdown("## Who’s using the app?")
+        last_times = {u["Name"]: u.get("LastLogin","never") for u in users}
         c1, c2 = st.columns(2)
+
+        # --- La column ---
         with c1:
-            if os.path.exists("la.jpg"): st.image("la.jpg", caption="La 🌻", use_container_width=True)
+            if os.path.exists("la.jpg"):
+                st.image("la.jpg", caption="La 🌻", use_container_width=True)
             st.markdown(f"_Last login:_ {last_times.get('La','never')}")
-            if st.button("I'm La"):
+            if st.button("I’m La"):
                 st.session_state.current_user = "La"
                 st.session_state.last_login_time = now
-                idxs = [i for i,u in enumerate(users) if u.get('Name')=='La']
-                if idxs:
+
+                # find La in the sheet, append if missing
+                idxs = [i for i,u in enumerate(users) if u.get("Name") == "La"]
+                if not idxs:
+                    users_ws.append_row(["La", now.strftime("%Y-%m-%d %H:%M:%S")])
+                else:
                     row = idxs[0] + 2
                     users_ws.update_cell(row, 2, now.strftime("%Y-%m-%d %H:%M:%S"))
+
                 placeholder.empty()
+                fetch_data.clear()           # clear cache so we reload “users”
+                st.experimental_rerun()      # restart script with current_user set
+
+        # --- Ruan column ---
         with c2:
-            if os.path.exists("ruan.jpg"): st.image("ruan.jpg", caption="Ruan 🚴‍♂️", use_container_width=True)
+            if os.path.exists("ruan.jpg"):
+                st.image("ruan.jpg", caption="Ruan 🚴‍♂️", use_container_width=True)
             st.markdown(f"_Last login:_ {last_times.get('Ruan','never')}")
-            if st.button("I'm Ruan"):
+            if st.button("I’m Ruan"):
                 st.session_state.current_user = "Ruan"
                 st.session_state.last_login_time = now
-                idxs = [i for i,u in enumerate(users) if u.get('Name')=='Ruan']
-                if idxs:
+
+                idxs = [i for i,u in enumerate(users) if u.get("Name") == "Ruan"]
+                if not idxs:
+                    users_ws.append_row(["Ruan", now.strftime("%Y-%m-%d %H:%M:%S")])
+                else:
                     row = idxs[0] + 2
                     users_ws.update_cell(row, 2, now.strftime("%Y-%m-%d %H:%M:%S"))
+
                 placeholder.empty()
-    # only stop if still no user selected
-    if "current_user" not in st.session_state:
-        st.stop()
+                fetch_data.clear()
+                st.experimental_rerun()
+
+    # if they still haven’t clicked either button, stop here
+    st.stop()
 
 # --- DEFINE CURRENT USER ---
 current_user = st.session_state.get("current_user")
