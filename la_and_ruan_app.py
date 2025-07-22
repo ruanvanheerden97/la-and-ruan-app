@@ -108,7 +108,6 @@ if "current_user" not in st.session_state:
             if st.button("I'm La"):
                 st.session_state.current_user = "La"
                 st.session_state.last_login_time = now
-                # update sheet
                 idxs = [i for i,u in enumerate(users) if u.get('Name')=='La']
                 if idxs:
                     row = idxs[0] + 2
@@ -129,9 +128,14 @@ if "current_user" not in st.session_state:
     if "current_user" not in st.session_state:
         st.stop()
 
+# --- DEFINE CURRENT USER ---
+current_user = st.session_state.get("current_user")
+
 # --- PAGE SETUP & SIDEBAR ---
 st.set_page_config(page_title="La & Ruan App", layout="centered", initial_sidebar_state="collapsed")
 menu = st.sidebar.selectbox("📂 Menu", ["🏠 Home","💌 Notes","📝 Bucket List","📅 Calendar","📊 Mood Tracker"] )
+
+# ... rest of the page code remains unchanged (Notes, Bucket List, Calendar, Mood Tracker) ...
 
 # --- HOME PAGE ---
 if menu=="🏠 Home":
