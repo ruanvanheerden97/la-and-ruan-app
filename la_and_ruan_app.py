@@ -95,9 +95,10 @@ recent_mood = [
     and datetime.strptime(m["Timestamp"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=tz) > last_login
 ]
 
-# --- LOGIN POPUP WITH LAST-LOGIN DISPLAY ---
+# --- LOGIN POPUP (no manual rerun needed) ---
 if "current_user" not in st.session_state:
     placeholder = st.empty()
+    now = datetime.now(tz)
     now_str = now.strftime("%Y-%m-%d %H:%M:%S")
 
     with placeholder.container():
@@ -105,7 +106,7 @@ if "current_user" not in st.session_state:
         last_times = {u["Name"]: u.get("LastLogin","never") for u in users}
         c1, c2 = st.columns(2)
 
-        # La
+        # --- La column ---
         with c1:
             if os.path.exists("la.jpg"):
                 st.image("la.jpg", caption="La 🌻", use_container_width=True)
@@ -113,15 +114,15 @@ if "current_user" not in st.session_state:
             if st.button("I’m La"):
                 st.session_state.current_user = "La"
                 st.session_state.last_login_time = now
-                idxs = [i for i,u in enumerate(users) if u.get("Name") == "La"]
+                # update or append the Users sheet
+                idxs = [i for i,u in enumerate(users) if u["Name"] == "La"]
                 if not idxs:
                     users_ws.append_row(["La", now_str])
                 else:
-                    users_ws.update_cell(idxs[0]+2, 2, now_str)
-                placeholder.empty()
-                st.stop()
+                    users_ws.update_cell(idxs[0] + 2, 2, now_str)
+                placeholder.empty()   # remove login UI
 
-        # Ruan
+        # --- Ruan column ---
         with c2:
             if os.path.exists("ruan.jpg"):
                 st.image("ruan.jpg", caption="Ruan 🚴‍♂️", use_container_width=True)
@@ -129,15 +130,20 @@ if "current_user" not in st.session_state:
             if st.button("I’m Ruan"):
                 st.session_state.current_user = "Ruan"
                 st.session_state.last_login_time = now
-                idxs = [i for i,u in enumerate(users) if u.get("Name") == "Ruan"]
+                idxs = [i for i,u in enumerate(users) if u["Name"] == "Ruan"]
                 if not idxs:
                     users_ws.append_row(["Ruan", now_str])
                 else:
-                    users_ws.update_cell(idxs[0]+2, 2, now_str)
+                    users_ws.update_cell(idxs[0] + 2, 2, now_str)
                 placeholder.empty()
-                st.stop()
 
-    st.stop()
+        # If they haven’t clicked either button yet, stop here
+        st.stop()
+
+# Now at this point st.session_state.current_user is guaranteed to exist,
+# and the rest of your app (Home, Notes, etc.) will render immediately.
+current_user = st.session_state.current_user
+
 
 # --- DEFINE CURRENT USER & PAGE SETUP ---
 current_user = st.session_state.current_user
